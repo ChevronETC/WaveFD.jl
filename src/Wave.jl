@@ -1,4 +1,4 @@
-module Wave
+module WaveFD
 
 using Base.Threads, CvxCompress, DSP, Distributed, DistributedArrays, FFTW, LinearAlgebra, NearestNeighbors, SpecialFunctions, StaticArrays, Statistics, Wave_jll
 

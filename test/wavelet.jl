@@ -1,4 +1,4 @@
-using FFTW, LinearAlgebra, Test, Wave
+using FFTW, LinearAlgebra, Test, WaveFD
 
 @testset "Wavelets" begin
     @testset "Minimum phase Ricker wavelet tests" begin
