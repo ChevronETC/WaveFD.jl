@@ -1,4 +1,4 @@
-using LinearAlgebra, Test, Wave
+using LinearAlgebra, Test, WaveFD
 
 @testset "compressedio, 3D Array, T=$(T), C=$(C), style=$(style)" for (T,C) in ((Float32, UInt32), (Float64, UInt32), (Float32, Float32), (Float64, Float64), (Float64, Float32)), style in (:file, :buffer)
     nz = 512
@@ -12,20 +12,20 @@ using LinearAlgebra, Test, Wave
     x = -1 .+ 2 .* rand(T,nz,ny,nx)
     y = -1 .+ 2 .* rand(T,nz,ny,nx)
 
-    C,P = Wave.comptype(C, T)
-    comp = Wave.Compressor(T, P, C, (nz,ny,nx), (bz,by,bx), 1e-2, 2, false)
+    C,P = WaveFD.comptype(C, T)
+    comp = WaveFD.Compressor(T, P, C, (nz,ny,nx), (bz,by,bx), 1e-2, 2, false)
     open(comp)
     io = style == :file ? open("test.bin","w") : IOBuffer()
-    Wave.compressedwrite(io, comp, 1, x)
-    Wave.compressedwrite(io, comp, 2, y)
+    WaveFD.compressedwrite(io, comp, 1, x)
+    WaveFD.compressedwrite(io, comp, 2, y)
     style == :file && close(io)
 
     xx = similar(x)
     yy = similar(y)
 
     io = style == :file ? open("test.bin") : io
-    Wave.compressedread!(io, comp, 1, xx)
-    Wave.compressedread!(io, comp, 2, yy)
+    WaveFD.compressedread!(io, comp, 1, xx)
+    WaveFD.compressedread!(io, comp, 2, yy)
     close(io)
 
     snr_x = 10*log10(norm(x)^2 / norm(x .- xx)^2)
@@ -59,13 +59,13 @@ end
 
     nz, ny, nx = size(x_sub)
 
-    C,P = Wave.comptype(C, T)
-    comp = Wave.Compressor(T, P, C, (nz,ny,nx), (bz,by,bx), 1e-2, 2, true)
+    C,P = WaveFD.comptype(C, T)
+    comp = WaveFD.Compressor(T, P, C, (nz,ny,nx), (bz,by,bx), 1e-2, 2, true)
     open(comp)
 
     io = style == :file ? open("test.bin", "w") : IOBuffer()
-    Wave.compressedwrite(io, comp, 1, x_sub)
-    Wave.compressedwrite(io, comp, 2, y_sub)
+    WaveFD.compressedwrite(io, comp, 1, x_sub)
+    WaveFD.compressedwrite(io, comp, 2, y_sub)
     style == :file && close(io)
 
     xx = copy(x)
@@ -78,8 +78,8 @@ end
     yy_sub[:] .= 0.0
 
     io = style == :file ? open("test.bin") : io
-    Wave.compressedread!(io, comp, 1, xx_sub)
-    Wave.compressedread!(io, comp, 2, yy_sub)
+    WaveFD.compressedread!(io, comp, 1, xx_sub)
+    WaveFD.compressedread!(io, comp, 2, yy_sub)
     close(io)
 
     snr_x = 10*log10(norm(x)^2 / norm(x .- xx)^2)
@@ -106,21 +106,21 @@ end
     x = -1 .+ 2 .* rand(T,nz,nx)
     y = -1 .+ 2 .* rand(T,nz,nx)
 
-    C,P = Wave.comptype(C, T)
-    comp = Wave.Compressor(T, P, C, (nz,nx), (bz,bx), 1e-2, 2, false)
+    C,P = WaveFD.comptype(C, T)
+    comp = WaveFD.Compressor(T, P, C, (nz,nx), (bz,bx), 1e-2, 2, false)
     open(comp)
 
     io = style == :file ? open("test.bin", "w") : IOBuffer()
-    Wave.compressedwrite(io, comp, 1, x)
-    Wave.compressedwrite(io, comp, 2, y)
+    WaveFD.compressedwrite(io, comp, 1, x)
+    WaveFD.compressedwrite(io, comp, 2, y)
     style == :file && close(io)
 
     xx = similar(x)
     yy = similar(y)
 
     io = style == :file ? open("test.bin") : io
-    Wave.compressedread!(io, comp, 1, xx)
-    Wave.compressedread!(io, comp, 2, yy)
+    WaveFD.compressedread!(io, comp, 1, xx)
+    WaveFD.compressedread!(io, comp, 2, yy)
     close(io)
 
     snr_x = 10*log10(norm(x)^2 / norm(x .- xx)^2)
@@ -152,13 +152,13 @@ end
 
     nz, nx = size(x_sub)
 
-    C,P = Wave.comptype(C, T)
-    comp = Wave.Compressor(T, P, C, (nz,nx), (bz,bx), 1e-2, 2, true)
+    C,P = WaveFD.comptype(C, T)
+    comp = WaveFD.Compressor(T, P, C, (nz,nx), (bz,bx), 1e-2, 2, true)
     open(comp)
 
     io = style == :file ? open("test.bin", "w") : IOBuffer()
-    Wave.compressedwrite(io, comp, 1, x_sub)
-    Wave.compressedwrite(io, comp, 2, y_sub)
+    WaveFD.compressedwrite(io, comp, 1, x_sub)
+    WaveFD.compressedwrite(io, comp, 2, y_sub)
     style == :file && close(io)
 
     xx = copy(x)
@@ -171,8 +171,8 @@ end
     yy_sub[:] .= 0.0
 
     io = style == :file ? open("test.bin") : io
-    Wave.compressedread!(io, comp, 1, xx_sub)
-    Wave.compressedread!(io, comp, 2, yy_sub)
+    WaveFD.compressedread!(io, comp, 1, xx_sub)
+    WaveFD.compressedread!(io, comp, 2, yy_sub)
     close(io)
 
     snr_x = 10*log10(norm(x)^2 / norm(x .- xx)^2)
@@ -191,7 +191,7 @@ end
 
 @testset "compressedio, exception" for file in ("test.bin",)
     io = open(file,"w")
-    @test_throws ErrorException Wave.compressedwrite_exception(io,0,1000)
+    @test_throws ErrorException WaveFD.compressedwrite_exception(io,0,1000)
     rm(file)
 end
 

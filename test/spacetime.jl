@@ -1,6 +1,6 @@
 using Distributed
 addprocs(2)
-@everywhere using DistributedArrays, LinearAlgebra, Random, Test, Wave
+@everywhere using DistributedArrays, LinearAlgebra, Random, Test, WaveFD
 
 macro ignore(ex::Expr)
 end
@@ -8,44 +8,44 @@ end
 @testset "SpaceTime" begin
     @testset "dtmod 2D, T=$(T)" for T in (Float32,Float64)
         for (S,Q,D) in ((:Fornberg,4,1),(:Fornberg,8,1),(:Fornberg,8,2),(:Nihei,8,1))
-            dtmod = Wave.default_dtmod(S, Q, D, T(10.0), T(10.0), T(1500.0), T(-1.0), T(0.004), T(0.25))
+            dtmod = WaveFD.default_dtmod(S, Q, D, T(10.0), T(10.0), T(1500.0), T(-1.0), T(0.004), T(0.25))
             @test isapprox(0.004/dtmod, round(0.004/dtmod), rtol=1e-6)
         end
     end
 
     @testset "dtmod 3D, T=$(T)" for T in (Float32,Float64)
         for (S,Q,D) in ((:Fornberg,8,1),(:Fornberg,8,2))
-            dtmod = Wave.default_dtmod(S, Q, D, T(10.0), T(10.0), T(10.0), T(1500.0), T(-1.0), T(0.004), T(0.25))
+            dtmod = WaveFD.default_dtmod(S, Q, D, T(10.0), T(10.0), T(10.0), T(1500.0), T(-1.0), T(0.004), T(0.25))
             @test isapprox(0.004/dtmod, round(0.004/dtmod), rtol=1e-6)
         end
     end
 
     @testset "ntmod" begin
         ntrec,dtrec,dtmod=128,0.004,0.001
-        ntmod = Wave.default_ntmod(dtrec, dtmod, 0.0, ntrec)[2]
+        ntmod = WaveFD.default_ntmod(dtrec, dtmod, 0.0, ntrec)[2]
         @test (ntrec-1)*dtrec ≈ (ntmod-1)*dtmod
-        ntmod = Wave.default_ntmod(dtrec, dtmod, ntrec)
+        ntmod = WaveFD.default_ntmod(dtrec, dtmod, ntrec)
         @test (ntrec-1)*dtrec ≈ (ntmod-1)*dtmod
 
         t0 = Array{Array}(undef, 2)
         t0[1] = [-0.1]
         t0[2] = [0.0]
-        it,ntmod = Wave.default_ntmod(dtrec, dtmod, t0, ntrec)
+        it,ntmod = WaveFD.default_ntmod(dtrec, dtmod, t0, ntrec)
         @test -(it-1)*dtmod ≈ t0[1][1]
         t0 = distribute(t0)
-        it,ntmod = Wave.default_ntmod(dtrec, dtmod, t0, ntrec)
+        it,ntmod = WaveFD.default_ntmod(dtrec, dtmod, t0, ntrec)
         @test -(it-1)*dtmod ≈ t0[1][1]
     end
 
-    @testset "Time interpolation tests, dot product, T=$(T), mode=$(mode), alg=$(alg), nthreads=$(nthreads), $(length(n)+1)D" for T in (Float32, Float64), mode in (0,1), alg in (Wave.LangJulia(),Wave.LangC()), n in ((),(4,),(4,5)), nthreads=(1,4)
+    @testset "Time interpolation tests, dot product, T=$(T), mode=$(mode), alg=$(alg), nthreads=$(nthreads), $(length(n)+1)D" for T in (Float32, Float64), mode in (0,1), alg in (WaveFD.LangJulia(),WaveFD.LangC()), n in ((),(4,),(4,5)), nthreads=(1,4)
         dtrec=T(.004)
         dtmod=T(.001)
         m = rand(T,256,n...)
         ms = rand(T,256,n...)
         d = rand(T,64,n...)
         ds = rand(T,64,n...)
-        Wave.interpforward!(Wave.interpfilters(dtmod,dtrec,mode,alg,nthreads), ds, m)
-        Wave.interpadjoint!(Wave.interpfilters(dtmod,dtrec,mode,alg,nthreads), ms, d)
+        WaveFD.interpforward!(WaveFD.interpfilters(dtmod,dtrec,mode,alg,nthreads), ds, m)
+        WaveFD.interpadjoint!(WaveFD.interpfilters(dtmod,dtrec,mode,alg,nthreads), ms, d)
         rhs = dot(ds,d)
         lhs = dot(m,ms)
         err = norm(rhs-lhs)
@@ -53,15 +53,15 @@ end
         @test isapprox(err, 0.0, atol=eps(T)*length(m))
     end
 
-    @testset "Time interpolation no-op, mode=$mode, T=$T, n=$n, alg=$alg, nthreads=$nthreads" for mode in (0,1), T in (Float32,Float64), n in ((),(4,),(4,5)), alg in (Wave.LangJulia(), Wave.LangC()), nthreads=(1,4)
+    @testset "Time interpolation no-op, mode=$mode, T=$T, n=$n, alg=$alg, nthreads=$nthreads" for mode in (0,1), T in (Float32,Float64), n in ((),(4,),(4,5)), alg in (WaveFD.LangJulia(), WaveFD.LangC()), nthreads=(1,4)
         dtrec=T(.004)
         dtmod=T(.004)
         m = rand(T,64,n...)
         ms = rand(T,64,n...)
         d = rand(T,64,n...)
         ds = rand(T,64,n...)
-        Wave.interpforward!(Wave.interpfilters(dtmod,dtrec,mode,alg,nthreads), ds, m)
-        Wave.interpadjoint!(Wave.interpfilters(dtmod,dtrec,mode,alg,nthreads), ms, d)
+        WaveFD.interpforward!(WaveFD.interpfilters(dtmod,dtrec,mode,alg,nthreads), ds, m)
+        WaveFD.interpadjoint!(WaveFD.interpfilters(dtmod,dtrec,mode,alg,nthreads), ms, d)
         rhs = dot(ds,d)
         lhs = dot(m,ms)
         err = norm(rhs-lhs)
@@ -71,7 +71,7 @@ end
         @test ms ≈ d
     end
 
-    @testset "Time interpolation tests, adjoint, accuracy, T=$(T), alg=$(alg), nthreads=$(nthreads), $(length(n)+1)D" for T in (Float32, Float64), alg=(Wave.LangJulia(),Wave.LangC()), n in ((),(4,),(4,5)), nthreads=(1,4)
+    @testset "Time interpolation tests, adjoint, accuracy, T=$(T), alg=$(alg), nthreads=$(nthreads), $(length(n)+1)D" for T in (Float32, Float64), alg=(WaveFD.LangJulia(),WaveFD.LangC()), n in ((),(4,),(4,5)), nthreads=(1,4)
         dtrec=T(.004)
         dtmod=T(.001)
 
@@ -97,20 +97,20 @@ end
         I = length(n) == 2 ? (I...,:,:) : I
 
         m = similar(m_expected); m[:] .= 0.0
-        Wave.interpadjoint!(Wave.interpfilters(dtmod,dtrec,0,alg,nthreads),m,d_expected)
+        WaveFD.interpadjoint!(WaveFD.interpfilters(dtmod,dtrec,0,alg,nthreads),m,d_expected)
         m *= 4
         err = norm((m-m_expected)[I...])/length(m)
         write(stdout, "T=$(T), interpadjoint!, mode=0, nthreads=$(nthreads), $(length(n)+1)D, err=$(err)\n")
         @test isapprox(err, 0.0, atol=.1)
 
         m = similar(m_expected); m[:] .= 0.0
-        Wave.interpadjoint!(Wave.interpfilters(dtmod,dtrec,1,alg,nthreads),m,d_expected)
+        WaveFD.interpadjoint!(WaveFD.interpfilters(dtmod,dtrec,1,alg,nthreads),m,d_expected)
         err = norm((m .- m_expected)[I...])/length(m)
         write(stdout, "T=$(T), interpadjoint!, mode=1, nthreads=$(nthreads), $(length(n)+1)D, err=$(err)\n")
         @test isapprox(err, 0.0, atol=.1)
     end
 
-    @testset "Time interpolation tests, forward, accuracy, T=$(T), alg=$(alg), nthreads=$(nthreads), $(length(n)+1)D" for T in (Float32, Float64), alg=(Wave.LangJulia(),Wave.LangC()), n in ((),(4,),(4,5)), nthreads=(1,4)
+    @testset "Time interpolation tests, forward, accuracy, T=$(T), alg=$(alg), nthreads=$(nthreads), $(length(n)+1)D" for T in (Float32, Float64), alg=(WaveFD.LangJulia(),WaveFD.LangC()), n in ((),(4,),(4,5)), nthreads=(1,4)
         dtrec=T(.004)
         dtmod=T(.001)
 
@@ -136,20 +136,20 @@ end
         I = length(n) == 2 ? (I...,:,:) : I
 
         d = similar(d_expected); d[:] .= 0.0
-        Wave.interpforward!(Wave.interpfilters(dtmod,dtrec,0,alg,nthreads),d,m_expected)
+        WaveFD.interpforward!(WaveFD.interpfilters(dtmod,dtrec,0,alg,nthreads),d,m_expected)
         err = norm((d .- d_expected)[I...])/length(d)
         write(stdout, "T=$(T), interpforward!, mode=0, nthreads=$(nthreads), $(length(n)+1)D, err=$(err)\n")
         @test isapprox(err, 0.0, atol=.1)
 
         d = similar(d_expected); d[:] .= 0.0
-        Wave.interpforward!(Wave.interpfilters(dtmod,dtrec,1,alg,nthreads),d,m_expected)
+        WaveFD.interpforward!(WaveFD.interpfilters(dtmod,dtrec,1,alg,nthreads),d,m_expected)
         d ./= 4
         err = norm((d .- d_expected)[I...])/length(d)
         write(stdout, "T=$(T), interpforward!, mode=1, nthreads=$(nthreads), $(length(n)+1)D, err=$(err)\n")
         @test isapprox(err, 0.0, atol=.1)
     end
 
-    @testset "data injection/extrapolation, 2D off-grid, inner product, T=$(T), F=$(F)" for T in (Float32,Float64), F in (Wave.hickscoeffs, Wave.linearcoeffs), alg=(Wave.LangC(),Wave.LangJulia()), nthreads=(1,4)
+    @testset "data injection/extrapolation, 2D off-grid, inner product, T=$(T), F=$(F)" for T in (Float32,Float64), F in (WaveFD.hickscoeffs, WaveFD.linearcoeffs), alg=(WaveFD.LangC(),WaveFD.LangJulia()), nthreads=(1,4)
         nr = 10
         nz, nx = 100, 100
         dz, dx = 10.0, 10.0
@@ -164,8 +164,8 @@ end
         g1 = rand(T, nz, nx)
         g2 = zeros(T, nz, nz)
 
-        Wave.injectdata!(g2, f1, 1, iz, ix, c, 10)
-        Wave.extractdata!(f2, g1, 1, iz, ix, c)
+        WaveFD.injectdata!(g2, f1, 1, iz, ix, c, 10)
+        WaveFD.extractdata!(f2, g1, 1, iz, ix, c)
 
         lhs = dot(f1,f2)
         rhs = dot(g1,g2)
@@ -174,7 +174,7 @@ end
         @test lhs ≈ rhs
     end
 
-    @testset "data injection/extrapolation, 3D off-grid, inner product, T=$(T), F=$(F)" for T in (Float32,Float64), F in (Wave.hickscoeffs, Wave.linearcoeffs)
+    @testset "data injection/extrapolation, 3D off-grid, inner product, T=$(T), F=$(F)" for T in (Float32,Float64), F in (WaveFD.hickscoeffs, WaveFD.linearcoeffs)
         nr = 10
         nz, ny, nx = 100, 100, 100
         dz, dy, dx = 10.0, 10.0, 10.0
@@ -190,8 +190,8 @@ end
         g1 = rand(T, nz, ny, nx)
         g2 = zeros(T, nz, ny, nz)
 
-        Wave.injectdata!(g2, f1, 1, iz, iy, ix, c)
-        Wave.extractdata!(f2, g1, 1, iz, iy, ix, c)
+        WaveFD.injectdata!(g2, f1, 1, iz, iy, ix, c)
+        WaveFD.extractdata!(f2, g1, 1, iz, iy, ix, c)
 
         lhs = dot(f1,f2)
         rhs = dot(g1,g2)
@@ -200,7 +200,7 @@ end
         @test lhs ≈ rhs
     end
 
-    @testset "data injection/extrapolation, 2D on-grid, dot product tests, T=$(T), F=$(F), lang=$(lang), nthreads=$(nthreads)" for T in (Float32,Float64), F in (Wave.hickscoeffs, Wave.linearcoeffs, Wave.ongridcoeffs), lang in (Wave.LangC(), Wave.LangJulia()), nthreads in (1, 4)
+    @testset "data injection/extrapolation, 2D on-grid, dot product tests, T=$(T), F=$(F), lang=$(lang), nthreads=$(nthreads)" for T in (Float32,Float64), F in (WaveFD.hickscoeffs, WaveFD.linearcoeffs, WaveFD.ongridcoeffs), lang in (WaveFD.LangC(), WaveFD.LangJulia()), nthreads in (1, 4)
         nz, nx=50, 52
         dz, dx = 10.0, 10.0
         z0, x0 = 0.0, 0.0
@@ -218,13 +218,13 @@ end
         iz, ix, c = F(T(dz), T(dx), z0, x0, nz, nx, rz, rx)
 
         local optargs
-        if F == Wave.ongridcoeffs
+        if F == WaveFD.ongridcoeffs
             optargs = (lang, nthreads)
         else
             optargs = ()
         end
-        Wave.injectdata!(ds, m, 1, iz, ix, c, optargs...)  # m->ds
-        Wave.extractdata!(ms, d, 1, iz, ix, c, optargs...) # d->ms
+        WaveFD.injectdata!(ds, m, 1, iz, ix, c, optargs...)  # m->ds
+        WaveFD.extractdata!(ms, d, 1, iz, ix, c, optargs...) # d->ms
         lhs = dot(m,ms)
         rhs = dot(d,ds)
         err = abs(lhs - rhs) / abs(lhs + rhs)
@@ -232,7 +232,7 @@ end
         @test lhs ≈ rhs
     end
 
-    @testset "data injection/extrapolation, 3D on-grid, dot product tests, T=$(T), F=$(F)" for T in (Float32,Float64), F in (Wave.hickscoeffs, Wave.linearcoeffs, Wave.ongridcoeffs)
+    @testset "data injection/extrapolation, 3D on-grid, dot product tests, T=$(T), F=$(F)" for T in (Float32,Float64), F in (WaveFD.hickscoeffs, WaveFD.linearcoeffs, WaveFD.ongridcoeffs)
         nz,ny,nx=50,51,52
         dz, dy, dx = 10.0, 10.0, 10.0
         z0, y0, x0 = 0.0, 0.0, 0.0
@@ -256,22 +256,22 @@ end
         d = rand(T,nz,ny,nx)   # given the field
         ms = zeros(T,1,ny*nx)  # ... get the data
 
-        Wave.injectdata!(ds, m, 1, iz, iy, ix, c)  # m->ds
-        Wave.extractdata!(ms, d, 1, iz, iy, ix, c) # d->ms
+        WaveFD.injectdata!(ds, m, 1, iz, iy, ix, c)  # m->ds
+        WaveFD.extractdata!(ms, d, 1, iz, iy, ix, c) # d->ms
         lhs = dot(m,ms)
         rhs = dot(d,ds)
         err = abs(lhs - rhs) / abs(lhs + rhs)
         write(stdout, "spacetime, inject/extractdata dot product test (T=$(T), F=$(F)), lhs=$(lhs), rhs=$(rhs), err=$(err)\n")
         @test lhs ≈ rhs
 
-        if F == Wave.ongridcoeffs
+        if F == WaveFD.ongridcoeffs
             ds_C = copy(ds)
             ms_C = copy(ms)
             ds = zeros(T,nz,ny,nx) # ... get the field
             ms = zeros(T,1,ny*nx)  # ... get the data
 
-            Wave.injectdata!(ds, m, 1, iz, iy, ix, c, Wave.LangJulia())  # m->ds
-            Wave.extractdata!(ms, d, 1, iz, iy, ix, c, Wave.LangJulia()) # d->ms
+            WaveFD.injectdata!(ds, m, 1, iz, iy, ix, c, WaveFD.LangJulia())  # m->ds
+            WaveFD.extractdata!(ms, d, 1, iz, iy, ix, c, WaveFD.LangJulia()) # d->ms
 
             @test ds ≈ ds_C
             @test ms ≈ ms_C
@@ -285,7 +285,7 @@ end
     end
 
     @testset "data injection, modeling 2D off-grid accuracy tests, T=$(T),F=$(F),freesurface=$(fs)" for 
-            T in (Float32,), F in (Wave.hickscoeffs,Wave.linearcoeffs), fs in (true, false)
+            T in (Float32,), F in (WaveFD.hickscoeffs,WaveFD.linearcoeffs), fs in (true, false)
 
         function modeling(T,F,ongrid::Bool)
             nthreads = Sys.CPU_THREADS
@@ -299,22 +299,22 @@ end
             prop = Prop2DAcoIsoDenQ_DEO2_FDTD(
                 nz=nz,nx=nx,nsponge=nsponge,dz=dx,dx=dx,dt=dt,freesurface=fs)
 
-            Wave.V(prop) .= 1.5
-            Wave.B(prop) .= 1.0
-            pcur = Wave.PCur(prop)
-            pold = Wave.POld(prop)
+            WaveFD.V(prop) .= 1.5
+            WaveFD.B(prop) .= 1.0
+            pcur = WaveFD.PCur(prop)
+            pold = WaveFD.POld(prop)
 
-            wavelet = convert(Array{T},reshape(get(Wave.WaveletCausalRicker(f=fpeak), dt*collect(0:nt-1)), nt, 1))
+            wavelet = convert(Array{T},reshape(get(WaveFD.WaveletCausalRicker(f=fpeak), dt*collect(0:nt-1)), nt, 1))
 
             iz, ix, c =  F(T(dz), T(dx), 0.0, 0.0, nz, nx, [sz], [sx])
-            blocks = Wave.source_blocking(nz, nx, nbz, nbx, iz, ix, c)
+            blocks = WaveFD.source_blocking(nz, nx, nbz, nbx, iz, ix, c)
 
             set_zero_subnormals(true)
             for it = 1:nt
                 rem(it,10) == 0 && write(stdout, "..$(it/nt*100) percent..\r")
-                Wave.propagateforward!(prop)
+                WaveFD.propagateforward!(prop)
                 pcur,pold = pold,pcur
-                Wave.injectdata!(pcur, blocks, wavelet, it)
+                WaveFD.injectdata!(pcur, blocks, wavelet, it)
             end
             set_zero_subnormals(false)
             pcur./(dz*dx)
@@ -328,7 +328,7 @@ end
     end
 
     @testset "data injection, modeling 3D off-grid accuracy tests, T=$(T),F=$(F),freesurface=$(fs)" for 
-            T in (Float32,), F in (Wave.hickscoeffs,Wave.linearcoeffs), fs in (true, false)
+            T in (Float32,), F in (WaveFD.hickscoeffs,WaveFD.linearcoeffs), fs in (true, false)
 
         function modeling(T,F,ongrid::Bool)
             nthreads = Sys.CPU_THREADS
@@ -341,25 +341,25 @@ end
             sz,sy,sx = z/2+0.01,y/2+0.01,x/2+0.01
             nz,nx,nt = round(Int,z/dz)+1, round(Int,x/dx)+1, round(Int,tmax/dt)+1
 
-            prop = Wave.Prop3DAcoIsoDenQ_DEO2_FDTD(
+            prop = WaveFD.Prop3DAcoIsoDenQ_DEO2_FDTD(
                 nz=nz,ny=ny,nx=nx,nsponge=nsponge,dz=dz,dy=dy,dx=dx,dt=dt,freesurface=fs)
 
-            Wave.V(prop) .= 1.5
-            Wave.B(prop) .= 1.0
-            pcur = Wave.PCur(prop)
-            pold = Wave.POld(prop)
+            WaveFD.V(prop) .= 1.5
+            WaveFD.B(prop) .= 1.0
+            pcur = WaveFD.PCur(prop)
+            pold = WaveFD.POld(prop)
 
-            wavelet = convert(Array{T},reshape(get(Wave.WaveletCausalRicker(f=fpeak), dt*collect(0:nt-1)), nt, 1))
+            wavelet = convert(Array{T},reshape(get(WaveFD.WaveletCausalRicker(f=fpeak), dt*collect(0:nt-1)), nt, 1))
 
             iz, iy, ix, c = F(T(dz), T(dy), T(dx), 0.0, 0.0, 0.0, nz, ny, nx, [sz], [sy], [sx])
-            blocks = Wave.source_blocking(nz, ny, nx, nbz, nby, nbx, iz, iy, ix, c)
+            blocks = WaveFD.source_blocking(nz, ny, nx, nbz, nby, nbx, iz, iy, ix, c)
 
             set_zero_subnormals(true)
             for it = 1:nt
                 rem(it,10) == 0 && write(stdout, "..$(it/nt*100) percent..\r")
-                Wave.propagateforward!(prop)
+                WaveFD.propagateforward!(prop)
                 pcur,pold = pold,pcur
-                Wave.injectdata!(pcur, blocks, wavelet, it)
+                WaveFD.injectdata!(pcur, blocks, wavelet, it)
             end
             set_zero_subnormals(false)
             pcur./(dz*dy*dx)
@@ -377,7 +377,7 @@ end
         rng = 6:(nx-6)
         rz = 7 .* dz .* ones(length(rng))
         rx = dx .* collect(rng)
-        iz, ix, c = Wave.hickscoeffs(T(dz), T(dx), z0, x0, nz, nx, rz, rx)
+        iz, ix, c = WaveFD.hickscoeffs(T(dz), T(dx), z0, x0, nz, nx, rz, rx)
 
         for i = 1:length(rz)
             @test size(c[i]) == (1,1)
@@ -402,7 +402,7 @@ end
             rx[ir], ry[ir] = dx*x, dy*y
             ir += 1
         end
-        iz, iy, ix, c = Wave.hickscoeffs(T(dz), T(dy), T(dx), z0, y0, x0, nz, ny, nx, rz, ry, rx)
+        iz, iy, ix, c = WaveFD.hickscoeffs(T(dz), T(dy), T(dx), z0, y0, x0, nz, ny, nx, rz, ry, rx)
 
         c_expected = ones(T, 1, 1)
         for i = 1:length(rz)
@@ -415,7 +415,7 @@ end
         rng = 2:(nx-1)
         rz = 2 .* dz .* ones(length(rng))
         rx = dx .* collect(rng .- 1)
-        iz, iy, c = Wave.linearcoeffs(T(dz), T(dx), z0, x0, nz, nx, rz, rx)
+        iz, iy, c = WaveFD.linearcoeffs(T(dz), T(dx), z0, x0, nz, nx, rz, rx)
 
         c_expected = zeros(T, 2, 2)
         c_expected[1,1] = 1.0
@@ -437,7 +437,7 @@ end
             rx[ir], ry[ir] = dx*(x-1), dy*(y-1)
             ir += 1
         end
-        iz, iy, ix, c = Wave.linearcoeffs(T(dz), T(dy), T(dx), z0, y0, x0, nz, ny, nx, rz, ry, rx)
+        iz, iy, ix, c = WaveFD.linearcoeffs(T(dz), T(dy), T(dx), z0, y0, x0, nz, ny, nx, rz, ry, rx)
 
         c_expected = zeros(T, 2, 2, 2)
         c_expected[1,1,1] = 1.0
@@ -453,12 +453,12 @@ end
         dx = 3.0
         sz = z0 .+ dz.*(randperm(128) .- 1)
         sx = x0 .+ dx.*(randperm(128) .- 1)
-        @test Wave.allongrid(dz, dx, z0, x0, sz, sx) == true
+        @test WaveFD.allongrid(dz, dx, z0, x0, sz, sx) == true
         sz[10] += .1
-        @test Wave.allongrid(dz, dx, z0, x0, sz, sx) == false
+        @test WaveFD.allongrid(dz, dx, z0, x0, sz, sx) == false
         sz[10] -= .1
         sx[10] += .1
-        @test Wave.allongrid(dz, dx, z0, x0, sz, sx) == false
+        @test WaveFD.allongrid(dz, dx, z0, x0, sz, sx) == false
     end
 
     @testset "ongrid detection tests, 3D" for T in (Float32,Float64)
@@ -471,15 +471,15 @@ end
         sz = z0 .+ dz.*(randperm(128) .- 1)
         sy = y0 .+ dy.*(randperm(128) .- 1)
         sx = x0 .+ dx.*(randperm(128) .- 1)
-        @test Wave.allongrid(dz, dy, dx, z0, y0, x0, sz, sy, sx) == true
+        @test WaveFD.allongrid(dz, dy, dx, z0, y0, x0, sz, sy, sx) == true
         sz[10] += .1
-        @test Wave.allongrid(dz, dy, dx, z0, y0, x0, sz, sy, sx) == false
+        @test WaveFD.allongrid(dz, dy, dx, z0, y0, x0, sz, sy, sx) == false
         sz[10] -= .1
         sx[10] += .1
-        @test Wave.allongrid(dz, dy, dx, z0, y0, x0, sz, sy, sx) == false
+        @test WaveFD.allongrid(dz, dy, dx, z0, y0, x0, sz, sy, sx) == false
         sx[10] -= .1
         sy[10] += .1
-        @test Wave.allongrid(dz, dy, dx, z0, y0, x0, sz, sy, sx) == false
+        @test WaveFD.allongrid(dz, dy, dx, z0, y0, x0, sz, sy, sx) == false
     end
 
     @testset "ongrid injection coefficients, 2D" for T in (Float32, Float64)
@@ -492,7 +492,7 @@ end
         z = z0 .+ dz.*(randperm(nx) .- 1)
         x = x0 .+ dx.*(randperm(nx) .- 1)
 
-        iz, ix, c = Wave.ongridcoeffs(dz, dx, z0, x0, nz, nx, z, x)
+        iz, ix, c = WaveFD.ongridcoeffs(dz, dx, z0, x0, nz, nx, z, x)
         @test iz ≈ round.((z .- z0)./dz).+1
         @test ix ≈ round.((x .- x0)./dx).+1
         @test c ≈ ones(size(iz))
@@ -512,7 +512,7 @@ end
         y = y0 .+ dy.*(randperm(nx) .- 1)
         x = x0 .+ dx.*(randperm(nx) .- 1)
 
-        iz, iy, ix, c = Wave.ongridcoeffs(dz, dy, dx, z0, y0, x0, nz, ny, nx, z, y, x)
+        iz, iy, ix, c = WaveFD.ongridcoeffs(dz, dy, dx, z0, y0, x0, nz, ny, nx, z, y, x)
         @test iz ≈ round.((z .- z0)./dz).+1
         @test iy ≈ round.((y .- y0)./dy).+1
         @test ix ≈ round.((x .- x0)./dx).+1
