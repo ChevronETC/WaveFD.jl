@@ -1,0 +1,110 @@
+\documentclass[10pt,fleqn]{article}
+\usepackage{amsmath}
+\usepackage{cancel}
+%\usepackage{amssymb}
+\usepackage[letterpaper, landscape, margin=1in]{geometry}
+
+\setlength{\parindent}{0pt}
+
+\begin{document}
+
+\section{Isotropic acoustic modeling with Q absorbing boundaries, self adjoint equation}
+John Washbourne, Ken Bube\\
+\today
+\vspace{10pt}
+
+Equation \ref{eq:system} shows the acoustic isotropic second order modeling equation with absorbing boundaries implemented using amplitude only Q.
+Note that we apply the time derivative in the term $\displaystyle \frac{\omega}{Q} \partial_t p $
+using a backward numerical difference.  We have tested a centered difference and found it to be much less stable.
+
+\begin{equation}
+\frac{1}{v^2} \left( \partial_t^2 p + \frac{\omega}{Q} \partial_t p \right) = \nabla p + S
+\label{eq:system}
+\end{equation}
+
+\section{Time update}
+\subsection{Time update numerical difference formulas, first and second}
+\begin{equation}
+\begin{aligned}
+\partial_t p  &= \frac{1}{\Delta} \left[ p_{(t)} - p_{(t - \Delta)} \right] \\[10pt]
+\partial_t^2 p &= \frac{1}{\Delta^2} \left[ p_{(t+\Delta)} - 2 p_{(t)} + p_{(t - \Delta)} \right] \quad \rightarrow \qquad p_{(t+\Delta)} = \Delta^2 \partial_t^2 p + 2 p_{(t)} - p_{(t - \Delta)}
+\end{aligned}
+\end{equation}
+
+\subsection{Rearrange equation \ref{eq:system} for $\partial_t^2 p$}
+\begin{equation}
+\partial_t^2 p = v^2 \left( \nabla p + S \right) - \frac{\omega}{Q} \partial_t p 
+\end{equation}
+
+\subsection{Apply time update difference formulas and rearrange}
+\begin{equation}
+p_{(t+\Delta)} = \Delta^2 v^2 \left( \nabla p + S \right) - \Delta \frac{\omega}{Q} \left[ p_{(t)} - p_{(t - \Delta)} \right] 
++ 2 p_{(t)} - p_{(t - \Delta)} 
+\end{equation}
+
+\newpage
+\section{Linearization and Born modeling equation}
+
+\subsection{Nonlinear modeling equation}
+\begin{equation}
+\frac{1}{v^2} \left( \partial_t^2 p + \frac{\omega}{Q} \partial_t p \right) = \nabla p + S
+\end{equation}
+
+\subsection{Taylor expand $\displaystyle \frac{1}{v^2} \rightarrow \left( \frac{1}{v_0^2} - \frac{2}{v_0^3} \delta v \right) $
+and replace $\displaystyle p \rightarrow \displaystyle (p_0 + \delta p)$}
+\begin{equation}
+\left( \frac{1}{v_0^2} - \frac{2}{v_0^3} \delta v \right) \left( \partial_t^2 p_0 + \partial_t^2 \delta p +
+\frac{\omega}{Q} \partial_t p_0 + \frac{\omega}{Q} \partial_t \delta p \right) =
+\nabla p_0 + \nabla \delta p + S
+\end{equation}
+
+\subsection{Expand}
+\begin{equation}
+  \frac{1}{v_0^2} \partial_t^2 p_0 
++ \frac{1}{v_0^2} \partial_t^2 \delta p
++ \frac{1}{v_0^2} \frac{\omega}{Q} \partial_t p_0 
++ \frac{1}{v_0^2} \frac{\omega}{Q} \partial_t \delta p
+- \frac{2}{v_0^3} \delta v \partial_t^2 p_0
+- \frac{2}{v_0^3} \delta v \partial_t^2 \delta p
+- \frac{2}{v_0^3} \delta v \frac{\omega}{Q} \partial_t p_0
+- \frac{2}{v_0^3} \delta v \frac{\omega}{Q} \partial_t \delta p
+= \nabla p_0 + \nabla \delta p + S 
+\end{equation}
+
+\subsection{Cancel reference terms}
+\begin{equation}
+  \cancel{ \frac{1}{v_0^2} \partial_t^2 p_0 }
++ \frac{1}{v_0^2} \partial_t^2 \delta p
++ \cancel{ \frac{1}{v_0^2} \frac{\omega}{Q} \partial_t p_0 }
++ \frac{1}{v_0^2} \frac{\omega}{Q} \partial_t \delta p
+- \frac{2}{v_0^3} \delta v \partial_t^2 p_0
+- \frac{2}{v_0^3} \delta v \partial_t^2 \delta p 
+- \frac{2}{v_0^3} \delta v \frac{\omega}{Q} \partial_t p_0
+- \frac{2}{v_0^3} \delta v \frac{\omega}{Q} \partial_t \delta p 
+= \cancel{ \nabla p_0 } + \nabla \delta p + \cancel{ S }
+\end{equation}
+
+\subsection{Zero terms second order in perturbations $\delta p,\delta v$ }
+\begin{equation}
+\frac{1}{v_0^2} \partial_t^2 \delta p
++ \frac{1}{v_0^2} \frac{\omega}{Q} \partial_t \delta p
+- \frac{2}{v_0^3} \delta v \partial_t^2 p_0
+- \cancel{ \frac{2}{v_0^3} \delta v \partial_t^2 \delta p }
+- \frac{2}{v_0^3} \delta v \frac{\omega}{Q} \partial_t p_0
+- \cancel{ \frac{2}{v_0^3} \delta v \frac{\omega}{Q} \partial_t \delta p }
+= \nabla \delta p 
+\end{equation}
+
+\subsection{Rearrange for the Born modeling equation}
+\begin{equation}
+\begin{aligned}
+\frac{1}{v_0^2} \left( \partial_t^2 \delta p + \frac{\omega}{Q} \partial_t \delta p \right) 
+&= \nabla \delta p + \frac{2}{v_0^3} \delta v \left( \partial_t^2 p_0 + \frac{\omega}{Q} \partial_t p_0 \right) \\[10pt]
+&= \nabla \delta p + \frac{2}{v_0^3} \delta v \left( v_0^2 \nabla p_0 + v_0^2 S \right) \\[10pt]
+\end{aligned}
+\end{equation}
+
+Note: it is procedurally simplest to serialize the quantity $\displaystyle \left( v_0^2 \nabla p_0 + v_0^2 S \right)$ when we perform 
+nonlinear forward modeling, and use that field as the Born source for the linearized forward and adjoint operators.
+
+\end{document}

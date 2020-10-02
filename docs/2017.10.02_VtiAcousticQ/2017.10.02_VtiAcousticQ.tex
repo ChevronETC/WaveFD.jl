@@ -1,0 +1,111 @@
+\documentclass[10pt,fleqn]{article}
+\usepackage{amsmath}
+%\usepackage{amssymb}
+\usepackage[letterpaper, landscape, margin=1in]{geometry}
+
+\begin{document}
+
+\section{Pseudo- visco- acoustic VTI variable density wave propagation with coupled second order system, self adjoint equation}
+John Washbourne, Ken Bube\\
+\today
+
+\subsection{notes}
+We apply the $\displaystyle \frac{\partial}{\partial t} \frac{\omega}{Q} $ term that implements the absorbing boundary conditions 
+using a backward numerical difference.  We have tested a centered difference and found it to be much less stable.
+
+\subsection{symbols}
+
+\begin{center}
+\begin{tabular}{ll} \\[-10pt]
+$\partial_t,\ \partial_x,\ \partial_y,\ \partial_z$ & $ 
+\displaystyle \frac{\partial }{\partial t},\ 
+\displaystyle \frac{\partial }{\partial x},\ 
+\displaystyle \frac{\partial }{\partial y},\ 
+\displaystyle \frac{\partial }{\partial z} $ \\[15pt]
+$\omega, Q$ & reference frequency for attentuation, attenuation at frequency $\omega$ \\[10pt]
+$P, M$ & quasi-P, quasi-S wavefields\\[10pt]
+$s_p(x,y,z,t),\ s_m(x,y,z,t)$ & quasi-P, quasi-S source terms\\[10pt]
+$f$ & $ 1 - \displaystyle \frac{V_p^2}{V_s^2} $\\[10pt]
+$ \widehat{\eta} $ & $ \sqrt{ \displaystyle \frac{2 \left(\epsilon - \delta\right) }{f + 2 \epsilon } } $\\[10pt]
+$b$ & buoyancy = $\displaystyle \frac{1}{\rho} $ \\[10pt]
+$ \{\ V_p,\ \epsilon,\ \widehat{\eta}\ \} $ & Material parameters \\[10pt]
+\end{tabular}
+\end{center}
+
+\subsection{Time update numerical difference formulas}
+\label{sec:diff}
+\begin{equation}
+\begin{aligned}
+\partial_t P  &= \frac{P^t - P^{t-\Delta} }{ \Delta}  \\[10pt]
+\partial_t^2 P &= \frac{P^{t+\Delta} - 2 P^t + P^{t-\Delta} }{ \Delta^2 } \qquad \rightarrow \qquad
+P^{t+\Delta} = \Delta^2 \partial_t^2 P + 2 P^t - P^{t-\Delta} 
+\end{aligned}
+\nonumber
+\end{equation}
+
+\subsection{2x2 coupled second order system}
+
+\begin{equation}
+\begin{aligned}
+&\frac{b}{V_p^2} \left( \partial_t^2(P) + \frac{\omega}{Q} \partial_t(P) \right) &=& \ 
+\partial_x \left( b (1 + 2 \epsilon) \partial_x(P) \right) +
+\partial_y \left( b (1 + 2 \epsilon) \partial_y(P) \right) +
+\partial_z \left( b (1 - f \widehat{\eta}^2) \partial_z(P) \right) + 
+\partial_z \left( b f \widehat{\eta} \sqrt{1 - \widehat{\eta}^2} \partial_z(M) \right) + s_p \\[10pt]
+&\frac{b}{V_p^2} \left( \partial_t^2(M) + \frac{\omega}{Q} \partial_t(M) \right) &=& \ 
+\partial_x \left( b (1 - f) \partial_x(M) \right) +
+\partial_y \left( b (1 - f) \partial_y(M) \right) +
+\partial_z \left( b (1 - f + f \widehat{\eta}^2) \partial_z(M) \right) + 
+\partial_z \left( b f \widehat{\eta} \sqrt{1 - \widehat{\eta}^2} \partial_z(P) \right) + s_m \\[10pt]
+\end{aligned}
+\nonumber
+\end{equation}
+
+\subsection{Rearrange terms for $\partial_t^2(P)$ and $\partial_t^2(M)$ }
+\begin{equation}
+\begin{aligned}
+\partial_t^2(P) = \ 
+& \frac{V_p^2}{b} \left[ 
+\partial_x \left( b (1 + 2 \epsilon) \partial_x(P) \right) +
+\partial_y \left( b (1 + 2 \epsilon) \partial_y(P) \right) +
+\partial_z \left( b (1 - f \widehat{\eta}^2) \partial_z(P) \right) + 
+\partial_z \left( b f \widehat{\eta} \sqrt{1 - \widehat{\eta}^2} \partial_z(M) \right) + s_p
+\right] 
+- \frac{\omega}{Q} \partial_t(P) \\[10pt]
+\partial_t^2(M) = \ 
+& \frac{V_p^2}{b} \left[ 
+\partial_x \left( b (1 - f) \partial_x(M) \right) +
+\partial_y \left( b (1 - f) \partial_y(M) \right) +
+\partial_z \left( b (1 - f + f \widehat{\eta}^2) \partial_z(M) \right) + 
+\partial_z \left( b f \widehat{\eta} \sqrt{1 - \widehat{\eta}^2} \partial_z(P) \right) + s_m 
+\right]
+- \frac{\omega}{Q} \partial_t(M) \\[10pt]
+\end{aligned}
+\nonumber
+\end{equation}
+
+\subsection{Apply time update difference formulas}
+\begin{equation}
+\begin{aligned}
+P^{t+\Delta} = \ 
+& \Delta^2\ \frac{V_p^2}{b} \left[ 
+\partial_x b \left( (1 + 2 \epsilon) \partial_x(P) \right) +
+\partial_y b \left( (1 + 2 \epsilon) \partial_y(P) \right) +
+\partial_z b \left( (1 - f \widehat{\eta}^2) \partial_z(P) \right) + 
+\partial_z b \left( f \widehat{\eta} \sqrt{1 - \widehat{\eta}^2} \partial_z(M) \right) + s_p \right] \\[10pt]
+& \quad - \Delta\ \frac{\omega}{Q} \left( P^{t} - P^{t-\Delta} \right) 
++ 2 P^t - P^{t - \Delta} 
+\\[10pt]
+M^{t+\Delta} = \ 
+& \Delta^2\ \frac{V_p^2}{b} \left[ 
+\partial_x b \left( (1 - f) \partial_x(M) \right) +
+\partial_y b \left( (1 - f) \partial_y(M) \right) +
+\partial_z b \left( (1 - f + f \widehat{\eta}^2) \partial_z(M) \right) + 
+\partial_z b \left( f \widehat{\eta} \sqrt{1 - \widehat{\eta}^2} \partial_z(P) \right) + s_m \right] \\[10pt]
+& \quad - \Delta\ \frac{\omega}{Q} \left( M^{t} - M^{t-\Delta} \right) 
++ 2 M^t - M^{t - \Delta} 
+\end{aligned}
+\nonumber
+\end{equation}
+
+\end{document}

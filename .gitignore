@@ -1,0 +1,8 @@
+*~
+*.swp
+.ipynb_checkpoints
+*.ps
+*.so
+*.o
+benchmark/tune.json
+benchmark/*.md
