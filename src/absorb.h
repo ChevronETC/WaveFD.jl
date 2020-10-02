@@ -1,14 +1,15 @@
 #ifndef ABSORB_H
 #define ABSORB_H
 
-#include <algorithm>
-#include <cmath>
-#include <cstdio>
-#include <cstdlib>
-#include <limits>
-#include <complex>
+#include <math.h>
+#include <float.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <complex.h>
+#include <stdlib.h>
 
-#include "stdlib.h"
+#define PI 3.1415926535897
+#define MIN(x,y) ((x)<(y)?(x):(y))
 
 /**
  * Ported from ModelingQuasiPeriodic2D 2017.09.19
@@ -30,7 +31,7 @@ void setupDtOmegaInvQ_2D(
         const float qInterior,
         float *dtOmegaInvQ) {
 
-    if (freqQ < std::numeric_limits<float>::epsilon()) {
+    if (freqQ < FLT_EPSILON) {
         char msg[1000];
         sprintf(msg, "Error -- freqQ [%f] is too small!\n", freqQ);
         perror(msg);
@@ -45,21 +46,21 @@ void setupDtOmegaInvQ_2D(
     for (long ksponge = 0; ksponge < nsponge; ksponge++) {
         const double dk = (double) (ksponge) / (double) (nsponge - 1);
         const double lq = lqmin + dk * (lqmax - lqmin);
-        qprof[ksponge] = std::exp(lq);
+        qprof[ksponge] = expf(lq);
     }
 
 #pragma omp parallel for num_threads(nthread) schedule(guided)
     for (long kx = 0; kx < nx; kx++) {
 #pragma omp simd
         for (long kz = 0; kz < nz; kz++) {
-            const long ksx = std::min(kx, (nx - 1 - kx));
-            const long ksz = (freeSurface) ? (nz - 1 - kz) : std::min(kz, (nz - 1 - kz));
-            const long ksponge = std::min(ksx, ksz);
+            const long ksx = MIN(kx, (nx - 1 - kx));
+            const long ksz = (freeSurface) ? (nz - 1 - kz) : MIN(kz, (nz - 1 - kz));
+            const long ksponge = MIN(ksx, ksz);
 
-            dtOmegaInvQ[kx * nz + kz] = dt * 2.0 * M_PI * freqQ / qInterior;
+            dtOmegaInvQ[kx * nz + kz] = dt * 2.0 * PI * freqQ / qInterior;
 
             if (ksponge < nsponge) {
-                dtOmegaInvQ[kx * nz + kz] = dt * 2.0 * M_PI * freqQ / qprof[ksponge];
+                dtOmegaInvQ[kx * nz + kz] = dt * 2.0 * PI * freqQ / qprof[ksponge];
             }
         }
     }
@@ -88,7 +89,7 @@ void setupDtOmegaInvQ_3D(
         const float qInterior,
         float *dtOmegaInvQ) {
 
-    if (freqQ < std::numeric_limits<float>::epsilon()) {
+    if (freqQ < FLT_EPSILON) {
         char msg[1000];
         sprintf(msg, "Error -- freqQ [%f] is too small!\n", freqQ);
         perror(msg);
@@ -118,18 +119,18 @@ void setupDtOmegaInvQ_3D(
 
 #pragma omp simd
             for (long ky = 0; ky < ny; ky++) {
-                const long ksx = std::min(kx, (nx - 1 - kx));
-                const long ksy = std::min(ky, (ny - 1 - ky));
-                const long ksz = (freeSurface) ? (nz - 1 - kz) : std::min(kz, (nz - 1 - kz));
-                const long ksponge = std::min(ksx, std::min(ksy, ksz));
+                const long ksx = MIN(kx, (nx - 1 - kx));
+                const long ksy = MIN(ky, (ny - 1 - ky));
+                const long ksz = (freeSurface) ? (nz - 1 - kz) : MIN(kz, (nz - 1 - kz));
+                const long ksponge = MIN(ksx, MIN(ksy, ksz));
 
                 const long kynz = ky * nz;
                 const long kxnynz_kynz = kxnynz + kynz;
 
-                dtOmegaInvQ[kxnynz_kynz + kz] = dt * 2 * M_PI * freqQ / qInterior;
+                dtOmegaInvQ[kxnynz_kynz + kz] = dt * 2 * PI * freqQ / qInterior;
 
                 if (ksponge < nsponge) {
-                    dtOmegaInvQ[kxnynz_kynz + kz] = dt * 2 * M_PI * freqQ / qprof[ksponge];
+                    dtOmegaInvQ[kxnynz_kynz + kz] = dt * 2 * PI * freqQ / qprof[ksponge];
                 }
             }
         }

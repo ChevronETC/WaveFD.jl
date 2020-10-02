@@ -6,3 +6,8 @@
 *.o
 benchmark/tune.json
 benchmark/*.md
+CMakeCache.txt
+CMakeFiles
+Makefile
+cmake_install.cmake
+install_manifest.txt

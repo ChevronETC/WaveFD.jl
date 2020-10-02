@@ -160,9 +160,6 @@ function interpfilters(dtmod::T, dtrec::T, mode::Int=0, impl::Language=LangC(), 
         end
     end
 
-    if isa(impl, LangC) && !isfile(Wave._jl_libspacetime * ".so")
-        throw(ArgumentError("$(Wave._jl_libspacetime) does not exist."))
-    end
     TimeInterp{T,typeof(impl)}(h,nthreads)
 end
 
@@ -302,7 +299,7 @@ function interpadjoint!(H::TimeInterp{Float32,LangC}, m::StridedArray{Float32,1}
         return nothing
     end
     ccall(
-        (:interpadjoint_1d_float, Wave._jl_libspacetime),
+        (:interpadjoint_1d_float, libspacetime),
         Ptr{Cvoid},
         (Ptr{Ptr{Cfloat}}, Ptr{Cfloat}, Ptr{Cfloat}, Csize_t,     Csize_t,   Csize_t),
          H.h,              m,           d,           length(H.h), length(m), length(d)
@@ -315,7 +312,7 @@ function interpadjoint!(H::TimeInterp{Float64,LangC}, m::StridedArray{Float64,1}
         return nothing
     end
     ccall(
-        (:interpadjoint_1d_double, Wave._jl_libspacetime),
+        (:interpadjoint_1d_double, libspacetime),
         Ptr{Cvoid},
         (Ptr{Ptr{Cdouble}}, Ptr{Cdouble}, Ptr{Cdouble}, Csize_t,     Csize_t,   Csize_t),
          H.h,               m,            d,            length(H.h), length(m), length(d)
@@ -328,7 +325,7 @@ function interpadjoint!(H::TimeInterp{Float32,LangC}, m::StridedArray{Float32,2}
         return nothing
     end
     ccall(
-        (:interpadjoint_nd_float, Wave._jl_libspacetime),
+        (:interpadjoint_nd_float, libspacetime),
         Ptr{Cvoid},
         (Ptr{Ptr{Cfloat}}, Ptr{Cfloat}, Ptr{Cfloat}, Csize_t,     Csize_t,   Csize_t,   Csize_t,   Csize_t),
          H.h,              m,           d,           length(H.h), size(m,1), size(d,1), size(d,2), H.nthreads
@@ -342,7 +339,7 @@ function interpadjoint!(H::TimeInterp{Float64,LangC}, m::StridedArray{Float64,2}
         return nothing
     end
     ccall(
-        (:interpadjoint_nd_double, Wave._jl_libspacetime),
+        (:interpadjoint_nd_double, libspacetime),
         Ptr{Cvoid},
         (Ptr{Ptr{Cdouble}}, Ptr{Cdouble}, Ptr{Cdouble}, Csize_t,     Csize_t,   Csize_t,   Csize_t,   Csize_t),
          H.h,               m,            d,            length(H.h), size(m,1), size(d,1), size(d,2), H.nthreads
@@ -356,7 +353,7 @@ function interpadjoint!(H::TimeInterp{Float32,LangC}, m::StridedArray{Float32,3}
         return nothing
     end
     ccall(
-        (:interpadjoint_nd_float, Wave._jl_libspacetime),
+        (:interpadjoint_nd_float, libspacetime),
         Ptr{Cvoid},
         (Ptr{Ptr{Cfloat}}, Ptr{Cfloat}, Ptr{Cfloat}, Csize_t,     Csize_t,   Csize_t,   Csize_t,             Csize_t),
          H.h,              m,           d,           length(H.h), size(m,1), size(d,1), size(d,2)*size(d,3), H.nthreads
@@ -370,7 +367,7 @@ function interpadjoint!(H::TimeInterp{Float64,LangC}, m::StridedArray{Float64,3}
         return nothing
     end
     ccall(
-        (:interpadjoint_nd_double, Wave._jl_libspacetime),
+        (:interpadjoint_nd_double, libspacetime),
         Ptr{Cvoid},
         (Ptr{Ptr{Cdouble}}, Ptr{Cdouble}, Ptr{Cdouble}, Csize_t,     Csize_t,   Csize_t,   Csize_t,             Csize_t),
          H.h,               m,            d,            length(H.h), size(m,1), size(d,1), size(d,2)*size(d,3), H.nthreads
@@ -384,7 +381,7 @@ function interpforward!(H::TimeInterp{Float32,LangC}, d::StridedArray{Float32,1}
         return nothing
     end
     ccall(
-        (:interpforward_1d_float, Wave._jl_libspacetime),
+        (:interpforward_1d_float, libspacetime),
         Ptr{Cvoid},
         (Ptr{Ptr{Cfloat}}, Ptr{Cfloat}, Ptr{Cfloat}, Csize_t,     Csize_t,   Csize_t),
          H.h,              d,           m,           length(H.h), length(d), length(m)
@@ -398,7 +395,7 @@ function interpforward!(H::TimeInterp{Float64,LangC}, d::StridedArray{Float64,1}
         return nothing
     end
     ccall(
-        (:interpforward_1d_double, Wave._jl_libspacetime),
+        (:interpforward_1d_double, libspacetime),
         Ptr{Cvoid},
         (Ptr{Ptr{Cdouble}}, Ptr{Cdouble}, Ptr{Cdouble}, Csize_t,     Csize_t,   Csize_t),
          H.h,               d,            m,            length(H.h), length(d), length(m)
@@ -412,7 +409,7 @@ function interpforward!(H::TimeInterp{Float32,LangC}, d::StridedArray{Float32,2}
         return nothing
     end
     ccall(
-        (:interpforward_nd_float, Wave._jl_libspacetime),
+        (:interpforward_nd_float, libspacetime),
         Ptr{Cvoid},
         (Ptr{Ptr{Cfloat}}, Ptr{Cfloat}, Ptr{Cfloat}, Csize_t,      Csize_t,   Csize_t,   Csize_t,   Csize_t),
          H.h,              d,           m,           length(H.h),  size(d,1), size(m,1), size(m,2), H.nthreads
@@ -426,7 +423,7 @@ function interpforward!(H::TimeInterp{Float64,LangC}, d::StridedArray{Float64,2}
         return nothing
     end
     ccall(
-        (:interpforward_nd_double, Wave._jl_libspacetime),
+        (:interpforward_nd_double, libspacetime),
         Ptr{Cvoid},
         (Ptr{Ptr{Cdouble}}, Ptr{Cdouble}, Ptr{Cdouble}, Csize_t,     Csize_t,   Csize_t,   Csize_t,   Csize_t),
          H.h,               d,            m,            length(H.h), size(d,1), size(m,1), size(m,2), H.nthreads
@@ -440,7 +437,7 @@ function interpforward!(H::TimeInterp{Float32,LangC}, d::StridedArray{Float32,3}
         return nothing
     end
     ccall(
-        (:interpforward_nd_float, Wave._jl_libspacetime),
+        (:interpforward_nd_float, libspacetime),
         Ptr{Cvoid},
         (Ptr{Ptr{Cfloat}}, Ptr{Cfloat}, Ptr{Cfloat}, Csize_t,      Csize_t,   Csize_t,   Csize_t,             Csize_t),
          H.h,               d,           m,           length(H.h), size(d,1), size(m,1), size(m,2)*size(m,3), H.nthreads
@@ -454,7 +451,7 @@ function interpforward!(H::TimeInterp{Float64,LangC}, d::StridedArray{Float64,3}
         return nothing
     end
     ccall(
-        (:interpforward_nd_double, Wave._jl_libspacetime),
+        (:interpforward_nd_double, libspacetime),
         Ptr{Cvoid},
         (Ptr{Ptr{Cdouble}}, Ptr{Cdouble}, Ptr{Cdouble}, Csize_t,     Csize_t,   Csize_t,   Csize_t,             Csize_t),
          H.h,               d,            m,            length(H.h), size(d,1), size(m,1), size(m,2)*size(m,3), H.nthreads
@@ -977,14 +974,14 @@ function injectdata!(field::Array{T,2}, data::Array{T,2}, it::Integer, iz::Array
     if isa(language, LangC)
         if T == Float32
             ccall(
-                (:injectdata_2d_ongrid_float, Wave._jl_libspacetime),
+                (:injectdata_2d_ongrid_float, libspacetime),
                 Cvoid,
                 (Ptr{Cfloat}, Ptr{Cfloat}, Ptr{Cfloat}, Ptr{Clong}, Ptr{Clong}, Csize_t, Csize_t,      Csize_t,   Csize_t,       Csize_t,            Csize_t),
                  field,       data,        c,           iz,         ix,         it,      size(data,1), length(c), size(field,1), size(field,2),      nthreads
             )
         else
             ccall(
-                (:injectdata_2d_ongrid_double, Wave._jl_libspacetime),
+                (:injectdata_2d_ongrid_double, libspacetime),
                 Cvoid,
                 (Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Clong}, Ptr{Clong}, Csize_t, Csize_t,      Csize_t,   Csize_t,       Csize_t,       Csize_t),
                  field,       data,          c,            iz,         ix,         it,      size(data,1), length(c), size(field,1), size(field,2), nthreads
@@ -1002,14 +999,14 @@ function injectdata!(field::Array{T,3}, data::Array{T,2}, it::Integer, iz::Array
     if isa(language, LangC)
         if T == Float32
             ccall(
-                (:injectdata_3d_ongrid_float, Wave._jl_libspacetime),
+                (:injectdata_3d_ongrid_float, libspacetime),
                 Cvoid,
                 (Ptr{Cfloat}, Ptr{Cfloat}, Ptr{Cfloat}, Ptr{Clong}, Ptr{Clong}, Ptr{Clong}, Csize_t, Csize_t,      Csize_t,   Csize_t,       Csize_t,       Csize_t,       Csize_t),
                  field,       data,        c,           iz,         iy,         ix,         it,      size(data,1), length(c), size(field,1), size(field,2), size(field,3), nthreads
             )
         else
             ccall(
-                (:injectdata_3d_ongrid_double, Wave._jl_libspacetime),
+                (:injectdata_3d_ongrid_double, libspacetime),
                 Cvoid,
                 (Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Clong}, Ptr{Clong}, Ptr{Clong}, Csize_t, Csize_t,      Csize_t,   Csize_t,       Csize_t,       Csize_t,       Csize_t),
                  field,       data,          c,            iz,         iy,         ix,         it,      size(data,1), length(c), size(field,1), size(field,2), size(field,3), nthreads
@@ -1027,14 +1024,14 @@ function extractdata!(data::Array{T,2}, field::Array{T,2}, it::Integer, iz::Arra
     if isa(language, LangC)
         if T == Float32
             ccall(
-                (:extractdata_2d_ongrid_float, Wave._jl_libspacetime),
+                (:extractdata_2d_ongrid_float, libspacetime),
                 Cvoid,
                 (Ptr{Cfloat}, Ptr{Cfloat}, Ptr{Cfloat}, Ptr{Clong}, Ptr{Clong}, Clong, Clong,        Clong,     Clong,         Clong,         Clong),
                  data,        field,       c,           iz,         ix,         it,    size(data,1), length(c), size(field,1), size(field,2), nthreads
             )
         else
             ccall(
-                (:extractdata_2d_ongrid_double, Wave._jl_libspacetime),
+                (:extractdata_2d_ongrid_double, libspacetime),
                 Cvoid,
                 (Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Clong}, Ptr{Clong}, Clong, Clong,        Clong,     Clong,         Clong,         Clong),
                  data,         field,        c,            iz,         ix,         it,    size(data,1), length(c), size(field,1), size(field,2), nthreads
@@ -1051,14 +1048,14 @@ function extractdata!(data::Array{T,2}, field::Array{T,3}, it::Integer, iz::Arra
     if isa(language, LangC)
         if T == Float32
             ccall(
-                (:extractdata_3d_ongrid_float, Wave._jl_libspacetime),
+                (:extractdata_3d_ongrid_float, libspacetime),
                 Cvoid,
                 (Ptr{Cfloat}, Ptr{Cfloat}, Ptr{Cfloat}, Ptr{Clong}, Ptr{Clong}, Ptr{Clong}, Clong, Clong,        Clong,     Clong,         Clong,         Clong,         Clong),
                  data,        field,       c,           iz,         iy,         ix,         it,    size(data,1), length(c), size(field,1), size(field,2), size(field,3), nthreads
             )
         else
             ccall(
-                (:extractdata_3d_ongrid_double, Wave._jl_libspacetime),
+                (:extractdata_3d_ongrid_double, libspacetime),
                 Cvoid,
                 (Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Clong}, Ptr{Clong}, Ptr{Clong}, Clong, Clong,        Clong,     Clong,         Clong,         Clong,         Clong),
                  data,         field,        c,            iz,         iy,         ix,         it,    size(data,1), length(c), size(field,1), size(field,2), size(field,3), nthreads

@@ -2,12 +2,12 @@
 #define PROP2DACOISODENQ_DEO2_FDTD_H
 
 #include <omp.h>
-#include <limits>
-#include <cstddef>
-#include <cstdlib>
-#include <cstdio>
-#include <cmath>
-#include "sys/time.h"
+#include <stddef.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <math.h>
+
+#define MIN(x,y) ((x)<(y)?(x):(y))
 
 class Prop2DAcoIsoDenQ_DEO2_FDTD {
 
@@ -69,6 +69,9 @@ public:
             _nbx, _nbz);
     }
 
+#if defined(__FUNCTION_CLONES__)
+__attribute__((target_clones("avx","avx2","avx512f","default")))
+#endif
     inline void numaFirstTouch(
             const long nx,
             const long nz,
@@ -90,8 +93,8 @@ public:
 #pragma omp parallel for collapse(2) num_threads(nthread) schedule(static)
         for (long bx = 4; bx < nx4; bx += BX_2D) {
             for (long bz = 4; bz < nz4; bz += BZ_2D) {
-                const long kxmax = std::min(bx + BX_2D, nx4);
-                const long kzmax = std::min(bz + BZ_2D, nz4);
+                const long kxmax = MIN(bx + BX_2D, nx4);
+                const long kzmax = MIN(bz + BZ_2D, nz4);
 
                 for (long kx = bx; kx < kxmax; kx++) {
 #pragma omp simd
@@ -158,6 +161,9 @@ public:
         if (_pCur != NULL) delete [] _pCur;
     }
 
+#if defined(__FUNCTION_CLONES__)
+__attribute__((target_clones("avx","avx2","avx512f","default")))
+#endif
     void info() {
         printf("\n");
         printf("Prop2DAcoIsoDenQ_DEO2_FDTD\n");
@@ -174,6 +180,9 @@ public:
      *     pCur -> pOld
      *     pOld -> pCur
      */
+#if defined(__FUNCTION_CLONES__)
+__attribute__((target_clones("avx","avx2","avx512f","default")))
+#endif
     inline void timeStep() {
 
         applyFirstDerivatives2D_PlusHalf_Sandwich(
@@ -198,12 +207,15 @@ public:
      *   - saved 2nd time derivative of pressure at corresponding time index in array dp2
      *   - Born source term will be injected into the _pCur array
      */
+#if defined(__FUNCTION_CLONES__)
+__attribute__((target_clones("avx","avx2","avx512f","default")))
+#endif
     inline void forwardBornInjection(float *dmodel, float *wavefieldDP) {
 #pragma omp parallel for collapse(2) num_threads(_nthread) schedule(static)
         for (long bx = 0; bx < _nx; bx += _nbx) {
             for (long bz = 0; bz < _nz; bz += _nbz) {
-                const long kxmax = std::min(bx + _nbx, _nx);
-                const long kzmax = std::min(bz + _nbz, _nz);
+                const long kxmax = MIN(bx + _nbx, _nx);
+                const long kzmax = MIN(bz + _nbz, _nz);
 
                 for (long kx = bx; kx < kxmax; kx++) {
 #pragma omp simd
@@ -226,12 +238,15 @@ public:
      *   - saved 2nd time derivative of pressure at corresponding time index in array dp2
      *   - Born image term will be accumulated iu the _dm array
      */
+#if defined(__FUNCTION_CLONES__)
+__attribute__((target_clones("avx","avx2","avx512f","default")))
+#endif
     inline void adjointBornAccumulation(float *dmodel, float *wavefieldDP) {
 #pragma omp parallel for num_threads(_nthread) schedule(static)
         for (long bx = 0; bx < _nx; bx += _nbx) {
             for (long bz = 0; bz < _nz; bz += _nbz) {
-                const long kxmax = std::min(bx + _nbx, _nx);
-                const long kzmax = std::min(bz + _nbz, _nz);
+                const long kxmax = MIN(bx + _nbx, _nx);
+                const long kzmax = MIN(bz + _nbz, _nz);
 
                 for (long kx = bx; kx < kxmax; kx++) {
 #pragma omp simd
@@ -246,7 +261,10 @@ public:
         }
     }
 
-    template<class Type>
+template<class Type>
+#if defined(__FUNCTION_CLONES__)
+__attribute__((target_clones("avx","avx2","avx512f","default")))
+#endif
     inline static void applyFirstDerivatives2D_PlusHalf_Sandwich(
             const long freeSurface,
             const long nx,
@@ -270,8 +288,8 @@ public:
 #pragma omp parallel for collapse(2) num_threads(nthread) schedule(static)
         for (long bx = 0; bx < nx; bx += BX_2D) {
             for (long bz = 0; bz < nz; bz += BZ_2D) {
-                const long kxmax = std::min(bx + BX_2D - 1, nx);
-                const long kzmax = std::min(bz + BZ_2D - 1, nz);
+                const long kxmax = MIN(bx + BX_2D - 1, nx);
+                const long kzmax = MIN(bz + BZ_2D - 1, nz);
 
                 for (long kx = bx; kx < kxmax; kx++) {
 #pragma omp simd
@@ -292,8 +310,8 @@ public:
         for (long bx = 4; bx < nx4; bx += BX_2D) {
             for (long bz = 4; bz < nz4; bz += BZ_2D) { /* cache blocking */
 
-                const long kxmax = std::min(bx + BX_2D, nx4);
-                const long kzmax = std::min(bz + BZ_2D, nz4);
+                const long kxmax = MIN(bx + BX_2D, nx4);
+                const long kzmax = MIN(bz + BZ_2D, nz4);
 
                 for (long kx = bx; kx < kxmax; kx++) {
 #pragma omp simd
@@ -433,6 +451,9 @@ public:
     }
 
     template<class Type>
+#if defined(__FUNCTION_CLONES__)
+__attribute__((target_clones("avx","avx2","avx512f","default")))
+#endif
     inline static void applyFirstDerivatives2D_MinusHalf_TimeUpdate_Nonlinear(
             const long freeSurface,
             const long nx,
@@ -465,8 +486,8 @@ public:
 #pragma omp parallel for collapse(2) num_threads(nthread) schedule(static)
         for (long bx = 0; bx < nx; bx += BX_2D) {
             for (long bz = 0; bz < nz; bz += BZ_2D) {
-                const long kxmax = std::min(bx + BX_2D, nx);
-                const long kzmax = std::min(bz + BZ_2D, nz);
+                const long kxmax = MIN(bx + BX_2D, nx);
+                const long kzmax = MIN(bz + BZ_2D, nz);
 
                 for (long kx = bx; kx < kxmax; kx++) {
 #pragma omp simd
@@ -483,8 +504,8 @@ public:
         for (long bx = 4; bx < nx4; bx += BX_2D) {
             for (long bz = 4; bz < nz4; bz += BZ_2D) { /* cache blocking */
 
-                const long kxmax = std::min(bx + BX_2D, nx4);
-                const long kzmax = std::min(bz + BZ_2D, nz4);
+                const long kxmax = MIN(bx + BX_2D, nx4);
+                const long kzmax = MIN(bz + BZ_2D, nz4);
 
                 for (long kx = bx; kx < kxmax; kx++) {
 #pragma omp simd
@@ -615,12 +636,15 @@ public:
     /**
      * Scale spatial derivatives by v^2/b to make them temporal derivs
      */
+#if defined(__FUNCTION_CLONES__)
+__attribute__((target_clones("avx","avx2","avx512f","default")))
+#endif
     inline void scaleSpatialDerivatives() {
 #pragma omp parallel for collapse(2) num_threads(_nthread) schedule(static)
         for (long bx = 0; bx < _nx; bx += _nbx) {
             for (long bz = 0; bz < _nz; bz += _nbz) {
-                const long kxmax = std::min(bx + _nbx, _nx);
-                const long kzmax = std::min(bz + _nbz, _nz);
+                const long kxmax = MIN(bx + _nbx, _nx);
+                const long kzmax = MIN(bz + _nbz, _nz);
 
                 for (long kx = bx; kx < kxmax; kx++) {
 #pragma omp simd
