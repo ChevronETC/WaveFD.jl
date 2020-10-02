@@ -28,12 +28,12 @@ function Prop2DAcoIsoDenQ_DEO2_FDTD(;
 
     fs = freesurface ? 1 : 0
 
-    p = ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_alloc, Wave._jl_libprop2DAcoIsoDenQ_DEO2_FDTD),
+    p = ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_alloc, libprop2DAcoIsoDenQ_DEO2_FDTD),
         Ptr{Cvoid},
         (Clong, Clong,    Clong, Clong, Clong,   Cfloat, Cfloat, Cfloat, Clong, Clong),
          fs,    nthreads, nx,    nz,    nsponge, dx,     dz,     dt,     nbx,   nbz)
 
-    ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_SetupDtOmegaInvQ, Wave._jl_libprop2DAcoIsoDenQ_DEO2_FDTD),
+    ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_SetupDtOmegaInvQ, libprop2DAcoIsoDenQ_DEO2_FDTD),
         Cvoid,
         (Ptr{Cvoid}, Cfloat, Cfloat, Cfloat),
          p,          freqQ,  qMin,   qInterior)
@@ -41,39 +41,39 @@ function Prop2DAcoIsoDenQ_DEO2_FDTD(;
     Prop2DAcoIsoDenQ_DEO2_FDTD(p)
 end
 
-free(prop::Prop2DAcoIsoDenQ_DEO2_FDTD) = ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_free, Wave._jl_libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid, (Ptr{Cvoid},), prop.p)
+free(prop::Prop2DAcoIsoDenQ_DEO2_FDTD) = ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_free, libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid, (Ptr{Cvoid},), prop.p)
 
 function size(prop::Prop2DAcoIsoDenQ_DEO2_FDTD)
-    nz = ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_getNz, Wave._jl_libprop2DAcoIsoDenQ_DEO2_FDTD), (Clong), (Ptr{Cvoid},), prop.p)
-    nx = ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_getNx, Wave._jl_libprop2DAcoIsoDenQ_DEO2_FDTD), (Clong), (Ptr{Cvoid},), prop.p)
+    nz = ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_getNz, libprop2DAcoIsoDenQ_DEO2_FDTD), (Clong), (Ptr{Cvoid},), prop.p)
+    nx = ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_getNx, libprop2DAcoIsoDenQ_DEO2_FDTD), (Clong), (Ptr{Cvoid},), prop.p)
     (nz,nx)
 end
 
 for _f in (:V, :B, :PSpace, :MSpace, :PCur, :POld, :TmpPx, :TmpPz, :DtOmegaInvQ)
     symf = "Prop2DAcoIsoDenQ_DEO2_FDTD_get" * string(_f)
-    @eval $(_f)(prop::Prop2DAcoIsoDenQ_DEO2_FDTD) = unsafe_wrap(Array, ccall(($symf, Wave._jl_libprop2DAcoIsoDenQ_DEO2_FDTD), Ptr{Float32}, (Ptr{Cvoid},), prop.p), size(prop), own=false)
+    @eval $(_f)(prop::Prop2DAcoIsoDenQ_DEO2_FDTD) = unsafe_wrap(Array, ccall(($symf, libprop2DAcoIsoDenQ_DEO2_FDTD), Ptr{Float32}, (Ptr{Cvoid},), prop.p), size(prop), own=false)
 end
 
-propagateforward!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD) = ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_TimeStep, Wave._jl_libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid, (Ptr{Cvoid},), prop.p)
+propagateforward!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD) = ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_TimeStep, libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid, (Ptr{Cvoid},), prop.p)
 propagateadjoint!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD) = propagateforward!(prop) # self-adjoint
 
 scale_spatial_derivatives!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD) =
-    ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_ScaleSpatialDerivatives, Wave._jl_libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid, (Ptr{Cvoid},), prop.p)
+    ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_ScaleSpatialDerivatives, libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid, (Ptr{Cvoid},), prop.p)
 
 function forwardBornInjection!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD,dmodelv,wavefieldp)
-    ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_ForwardBornInjection, Wave._jl_libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid,
+    ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_ForwardBornInjection, libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid,
         (Ptr{Cvoid},Ptr{Cfloat},Ptr{Cfloat}),
          prop.p,    dmodelv,    wavefieldp)
 end
 
 function adjointBornAccumulation!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD,dmodelv,wavefieldp)
-    ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation, Wave._jl_libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid,
+    ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation, libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid,
         (Ptr{Cvoid},Ptr{Cfloat},Ptr{Cfloat}),
          prop.p,    dmodelv,    wavefieldp)
 end
 
 function show(io::IO, prop::Prop2DAcoIsoDenQ_DEO2_FDTD)
-    nx = ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_getNx, Wave._jl_libprop2DAcoIsoDenQ_DEO2_FDTD), (Clong), (Ptr{Cvoid},), prop.p)
-    nz = ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_getNz, Wave._jl_libprop2DAcoIsoDenQ_DEO2_FDTD), (Clong), (Ptr{Cvoid},), prop.p)
+    nx = ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_getNx, libprop2DAcoIsoDenQ_DEO2_FDTD), (Clong), (Ptr{Cvoid},), prop.p)
+    nz = ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_getNz, libprop2DAcoIsoDenQ_DEO2_FDTD), (Clong), (Ptr{Cvoid},), prop.p)
     write(io, "Prop2DAcoIsoDenQ_DEO2_FDTD -- nx,nz; $nx,$nz")
 end

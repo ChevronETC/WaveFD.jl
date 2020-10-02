@@ -1,14 +1,13 @@
 #ifndef PROP3DACOTTIDENQ_DEO2_FDTD_H
 #define PROP3DACOTTIDENQ_DEO2_FDTD_H
 
-#include <algorithm>
 #include <omp.h>
-#include <limits>
-#include <cstddef>
-#include <cstdlib>
-#include <cstdio>
-#include <cmath>
-#include "sys/time.h"
+#include <stddef.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <math.h>
+
+#define MIN(x,y) ((x)<(y)?(x):(y))
 
 class Prop3DAcoTTIDenQ_DEO2_FDTD {
 
@@ -120,6 +119,9 @@ public:
             _pOld, _pCur, _mOld, _mCur, _nbx, _nby, _nbz);
     }
 
+#if defined(__FUNCTION_CLONES__)
+__attribute__((target_clones("avx","avx2","avx512f","default")))
+#endif
     inline void numaFirstTouch(
             const long nx,
             const long ny,
@@ -165,9 +167,9 @@ public:
         for (long bx = 4; bx < nx4; bx += BX_3D) {
             for (long by = 4; by < ny4; by += BY_3D) {
                 for (long bz = 4; bz < nz4; bz += BZ_3D) {
-                    const long kxmax = std::min(bx + BX_3D, nx4);
-                    const long kymax = std::min(by + BY_3D, ny4);
-                    const long kzmax = std::min(bz + BZ_3D, nz4);
+                    const long kxmax = MIN(bx + BX_3D, nx4);
+                    const long kymax = MIN(by + BY_3D, ny4);
+                    const long kzmax = MIN(bz + BZ_3D, nz4);
 
                     for (long kx = bx; kx < kxmax; kx++) {
                         for (long ky = by; ky < kymax; ky++) {
@@ -318,6 +320,9 @@ public:
         if (_mCur != NULL) delete [] _mCur;
     }
 
+#if defined(__FUNCTION_CLONES__)
+__attribute__((target_clones("avx","avx2","avx512f","default")))
+#endif
     void info() {
         printf("\n");
         printf("Prop3DAcoTTIDenQ_DEO2_FDTD\n");
@@ -346,6 +351,9 @@ public:
      *     R+ forward  rotation
      *     R- backward rotation
      */
+#if defined(__FUNCTION_CLONES__)
+__attribute__((target_clones("avx","avx2","avx512f","default")))
+#endif
     inline void timeStep() {
 
         applyRotationSandwichRotation_TTI_FirstDerivatives3D_PlusHalf_TwoFields(
@@ -371,14 +379,17 @@ public:
     /**
      * Scale spatial derivatives by v^2/b to make them temporal derivs
      */
+#if defined(__FUNCTION_CLONES__)
+__attribute__((target_clones("avx","avx2","avx512f","default")))
+#endif
     inline void scaleSpatialDerivatives() {
 #pragma omp parallel for collapse(3) num_threads(_nthread) schedule(static)
         for (long bx = 0; bx < _nx; bx += _nbx) {
             for (long by = 0; by < _ny; by += _nby) {
                 for (long bz = 0; bz < _nz; bz += _nbz) {
-                    const long kxmax = std::min(bx + _nbx, _nx);
-                    const long kymax = std::min(by + _nby, _ny);
-                    const long kzmax = std::min(bz + _nbz, _nz);
+                    const long kxmax = MIN(bx + _nbx, _nx);
+                    const long kymax = MIN(by + _nby, _ny);
+                    const long kzmax = MIN(bz + _nbz, _nz);
 
                     for (long kx = bx; kx < kxmax; kx++) {
                         for (long ky = by; ky < kymax; ky++) {
@@ -404,6 +415,9 @@ public:
      *   - saved 2nd time derivative of pressure at corresponding time index in array dp2
      *   - Born source term will be injected into the _pCur array
      */
+#if defined(__FUNCTION_CLONES__)
+__attribute__((target_clones("avx","avx2","avx512f","default")))
+#endif
     inline void forwardBornInjection_V(
             float *dmodelV,
             float *wavefieldDP, float *wavefieldDM) {
@@ -411,9 +425,9 @@ public:
         for (long bx = 0; bx < _nx; bx += _nbx) {
             for (long by = 0; by < _ny; by += _nby) {
                 for (long bz = 0; bz < _nz; bz += _nbz) {
-                    const long kxmax = std::min(bx + _nbx, _nx);
-                    const long kymax = std::min(by + _nby, _ny);
-                    const long kzmax = std::min(bz + _nbz, _nz);
+                    const long kxmax = MIN(bx + _nbx, _nx);
+                    const long kymax = MIN(by + _nby, _ny);
+                    const long kzmax = MIN(bz + _nbz, _nz);
 
                     for (long kx = bx; kx < kxmax; kx++) {
                         for (long ky = by; ky < kymax; ky++) {
@@ -440,6 +454,9 @@ public:
         }
     }
 
+#if defined(__FUNCTION_CLONES__)
+__attribute__((target_clones("avx","avx2","avx512f","default")))
+#endif
     inline void forwardBornInjection_VEA(
             float *dmodelV, float *dmodelE, float *dmodelA,
             float *wavefieldP, float *wavefieldM, float *wavefieldDP, float *wavefieldDM) {
@@ -459,9 +476,9 @@ public:
         for (long bx = 0; bx < _nx; bx += _nbx) {
             for (long by = 0; by < _ny; by += _nby) {
                 for (long bz = 0; bz < _nz; bz += _nbz) {
-                    const long kxmax = std::min(bx + _nbx, _nx);
-                    const long kymax = std::min(by + _nby, _ny);
-                    const long kzmax = std::min(bz + _nbz, _nz);
+                    const long kxmax = MIN(bx + _nbx, _nx);
+                    const long kymax = MIN(by + _nby, _ny);
+                    const long kzmax = MIN(bz + _nbz, _nz);
 
                     for (long kx = bx; kx < kxmax; kx++) {
                         for (long ky = by; ky < kymax; ky++) {
@@ -509,9 +526,9 @@ public:
         for (long bx = 0; bx < _nx; bx += _nbx) {
             for (long by = 0; by < _ny; by += _nby) {
                 for (long bz = 0; bz < _nz; bz += _nbz) {
-                    const long kxmax = std::min(bx + _nbx, _nx);
-                    const long kymax = std::min(by + _nby, _ny);
-                    const long kzmax = std::min(bz + _nbz, _nz);
+                    const long kxmax = MIN(bx + _nbx, _nx);
+                    const long kymax = MIN(by + _nby, _ny);
+                    const long kzmax = MIN(bz + _nbz, _nz);
 
                     for (long kx = bx; kx < kxmax; kx++) {
                         for (long ky = by; ky < kymax; ky++) {
@@ -549,15 +566,18 @@ public:
      *   - saved 2nd time derivative of pressure at corresponding time index in array dp2
      *   - Born image term will be accumulated iu the _dm array
      */
+#if defined(__FUNCTION_CLONES__)
+__attribute__((target_clones("avx","avx2","avx512f","default")))
+#endif
     inline void adjointBornAccumulation_V(float *dmodelV,
             float *wavefieldDP, float *wavefieldDM) {
 #pragma omp parallel for collapse(3) num_threads(_nthread) schedule(static)
         for (long bx = 0; bx < _nx; bx += _nbx) {
             for (long by = 0; by < _ny; by += _nby) {
                 for (long bz = 0; bz < _nz; bz += _nbz) {
-                    const long kxmax = std::min(bx + _nbx, _nx);
-                    const long kymax = std::min(by + _nby, _ny);
-                    const long kzmax = std::min(bz + _nbz, _nz);
+                    const long kxmax = MIN(bx + _nbx, _nx);
+                    const long kymax = MIN(by + _nby, _ny);
+                    const long kzmax = MIN(bz + _nbz, _nz);
 
                     for (long kx = bx; kx < kxmax; kx++) {
                         for (long ky = by; ky < kymax; ky++) {
@@ -579,6 +599,9 @@ public:
         }
     }
 
+#if defined(__FUNCTION_CLONES__)
+__attribute__((target_clones("avx","avx2","avx512f","default")))
+#endif
     inline void adjointBornAccumulation_VEA(float *dmodelV, float *dmodelE, float *dmodelA,
             float *wavefieldP, float *wavefieldM, float *wavefieldDP, float *wavefieldDM) {
 
@@ -604,9 +627,9 @@ public:
         for (long bx = 0; bx < _nx; bx += _nbx) {
             for (long by = 0; by < _ny; by += _nby) {
                 for (long bz = 0; bz < _nz; bz += _nbz) {
-                    const long kxmax = std::min(bx + _nbx, _nx);
-                    const long kymax = std::min(by + _nby, _ny);
-                    const long kzmax = std::min(bz + _nbz, _nz);
+                    const long kxmax = MIN(bx + _nbx, _nx);
+                    const long kymax = MIN(by + _nby, _ny);
+                    const long kzmax = MIN(bz + _nbz, _nz);
 
                     for (long kx = bx; kx < kxmax; kx++) {
                         for (long ky = by; ky < kymax; ky++) {
@@ -639,6 +662,9 @@ public:
     }
 
     template<class Type>
+#if defined(__FUNCTION_CLONES__)
+__attribute__((target_clones("avx","avx2","avx512f","default")))
+#endif
     inline static void applyRotationSandwichRotation_TTI_FirstDerivatives3D_PlusHalf_TwoFields(
             const long freeSurface,
             const long nx,
@@ -732,9 +758,9 @@ public:
         for (long bx = 4; bx < nx4; bx += BX_3D) {
             for (long by = 4; by < ny4; by += BY_3D) {
                 for (long bz = 4; bz < nz4; bz += BZ_3D) {
-                    const long kxmax = std::min(bx + BX_3D, nx4);
-                    const long kymax = std::min(by + BY_3D, ny4);
-                    const long kzmax = std::min(bz + BZ_3D, nz4);
+                    const long kxmax = MIN(bx + BX_3D, nx4);
+                    const long kymax = MIN(by + BY_3D, ny4);
+                    const long kzmax = MIN(bz + BZ_3D, nz4);
 
                     for (long kx = bx; kx < kxmax; kx++) {
                         const long kxnynz = kx * nynz;
@@ -1114,6 +1140,9 @@ public:
      * Linear    method: does not output the spatial derivatives
      */
     template<class Type>
+#if defined(__FUNCTION_CLONES__)
+__attribute__((target_clones("avx","avx2","avx512f","default")))
+#endif
     inline static void applyFirstDerivatives3D_MinusHalf_TimeUpdate_Nonlinear(
             const long freeSurface,
             const long nx,
@@ -1196,9 +1225,9 @@ public:
         for (long bx = 4; bx < nx4; bx += BX_3D) {
             for (long by = 4; by < ny4; by += BY_3D) {
                 for (long bz = 4; bz < nz4; bz += BZ_3D) {
-                    const long kxmax = std::min(bx + BX_3D, nx4);
-                    const long kymax = std::min(by + BY_3D, ny4);
-                    const long kzmax = std::min(bz + BZ_3D, nz4);
+                    const long kxmax = MIN(bx + BX_3D, nx4);
+                    const long kymax = MIN(by + BY_3D, ny4);
+                    const long kzmax = MIN(bz + BZ_3D, nz4);
 
                     for (long kx = bx; kx < kxmax; kx++) {
                         const long kxnynz = kx * nynz;
@@ -1474,6 +1503,9 @@ public:
     }
 
     template<class Type>
+#if defined(__FUNCTION_CLONES__)
+__attribute__((target_clones("avx","avx2","avx512f","default")))
+#endif
     inline static void applyFirstDerivatives3D_TTI_PlusHalf_Sandwich(
             const long freeSurface,
             const long nx,
@@ -1571,9 +1603,9 @@ public:
         for (long bx = 4; bx < nx4; bx += BX_3D) {
             for (long by = 4; by < ny4; by += BY_3D) {
                 for (long bz = 4; bz < nz4; bz += BZ_3D) {
-                    const long kxmax = std::min(bx + BX_3D, nx4);
-                    const long kymax = std::min(by + BY_3D, ny4);
-                    const long kzmax = std::min(bz + BZ_3D, nz4);
+                    const long kxmax = MIN(bx + BX_3D, nx4);
+                    const long kymax = MIN(by + BY_3D, ny4);
+                    const long kzmax = MIN(bz + BZ_3D, nz4);
 
                     for (long kx = bx; kx < kxmax; kx++) {
                         const long kxnynz = kx * nynz;
@@ -1964,6 +1996,9 @@ public:
     }
 
     template<class Type>
+#if defined(__FUNCTION_CLONES__)
+__attribute__((target_clones("avx","avx2","avx512f","default")))
+#endif
     inline static void applyFirstDerivatives3D_TTI_MinusHalf_TimeUpdate_Nonlinear(
             const long freeSurface,
             const long nx,
@@ -2051,9 +2086,9 @@ public:
         for (long bx = 4; bx < nx4; bx += BX_3D) {
             for (long by = 4; by < ny4; by += BY_3D) {
                 for (long bz = 4; bz < nz4; bz += BZ_3D) {
-                    const long kxmax = std::min(bx + BX_3D, nx4);
-                    const long kymax = std::min(by + BY_3D, ny4);
-                    const long kzmax = std::min(bz + BZ_3D, nz4);
+                    const long kxmax = MIN(bx + BX_3D, nx4);
+                    const long kymax = MIN(by + BY_3D, ny4);
+                    const long kzmax = MIN(bz + BZ_3D, nz4);
 
                     for (long kx = bx; kx < kxmax; kx++) {
                         const long kxnynz = kx * nynz;
@@ -2741,6 +2776,9 @@ public:
     }
 
     template<class Type>
+#if defined(__FUNCTION_CLONES__)
+__attribute__((target_clones("avx","avx2","avx512f","default")))
+#endif
     inline static void applyFirstDerivatives3D_TTI_PlusHalf(
             const long freeSurface,
             const long nx,
@@ -2819,9 +2857,9 @@ public:
         for (long bx = 4; bx < nx4; bx += BX_3D) {
             for (long by = 4; by < ny4; by += BY_3D) {
                 for (long bz = 4; bz < nz4; bz += BZ_3D) {
-                    const long kxmax = std::min(bx + BX_3D, nx4);
-                    const long kymax = std::min(by + BY_3D, ny4);
-                    const long kzmax = std::min(bz + BZ_3D, nz4);
+                    const long kxmax = MIN(bx + BX_3D, nx4);
+                    const long kymax = MIN(by + BY_3D, ny4);
+                    const long kzmax = MIN(bz + BZ_3D, nz4);
 
                     for (long kx = bx; kx < kxmax; kx++) {
                         const long kxnynz = kx * nynz;
@@ -2999,6 +3037,9 @@ public:
     }
 
     template<class Type>
+#if defined(__FUNCTION_CLONES__)
+__attribute__((target_clones("avx","avx2","avx512f","default")))
+#endif
     inline static void applyFirstDerivatives3D_TTI_MinusHalf(
             const long freeSurface,
             const long nx,
@@ -3077,9 +3118,9 @@ public:
         for (long bx = 4; bx < nx4; bx += BX_3D) {
             for (long by = 4; by < ny4; by += BY_3D) {
                 for (long bz = 4; bz < nz4; bz += BZ_3D) {
-                    const long kxmax = std::min(bx + BX_3D, nx4);
-                    const long kymax = std::min(by + BY_3D, ny4);
-                    const long kzmax = std::min(bz + BZ_3D, nz4);
+                    const long kxmax = MIN(bx + BX_3D, nx4);
+                    const long kymax = MIN(by + BY_3D, ny4);
+                    const long kzmax = MIN(bz + BZ_3D, nz4);
 
                     for (long kx = bx; kx < kxmax; kx++) {
                         const long kxnynz = kx * nynz;

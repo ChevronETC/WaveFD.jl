@@ -1,17 +1,6 @@
 module Wave
 
-const _jl_libprop2DAcoIsoDenQ_DEO2_FDTD = normpath(joinpath(Base.source_path(),"../../deps/usr/lib/libprop2DAcoIsoDenQ_DEO2_FDTD"))
-const _jl_libprop2DAcoTTIDenQ_DEO2_FDTD = normpath(joinpath(Base.source_path(),"../../deps/usr/lib/libprop2DAcoTTIDenQ_DEO2_FDTD"))
-const _jl_libprop2DAcoVTIDenQ_DEO2_FDTD = normpath(joinpath(Base.source_path(),"../../deps/usr/lib/libprop2DAcoVTIDenQ_DEO2_FDTD"))
-
-const _jl_libprop3DAcoIsoDenQ_DEO2_FDTD = normpath(joinpath(Base.source_path(),"../../deps/usr/lib/libprop3DAcoIsoDenQ_DEO2_FDTD"))
-const _jl_libprop3DAcoTTIDenQ_DEO2_FDTD = normpath(joinpath(Base.source_path(),"../../deps/usr/lib/libprop3DAcoTTIDenQ_DEO2_FDTD"))
-const _jl_libprop3DAcoVTIDenQ_DEO2_FDTD = normpath(joinpath(Base.source_path(),"../../deps/usr/lib/libprop3DAcoVTIDenQ_DEO2_FDTD"))
-
-const _jl_libillumination               = normpath(joinpath(Base.source_path(),"../../deps/usr/lib/libillumination"))
-const _jl_libspacetime                  = normpath(joinpath(Base.source_path(),"../../deps/usr/lib/libspacetime"))
-
-using Base.Threads, CvxCompress, DSP, Distributed, DistributedArrays, FFTW, LinearAlgebra, NearestNeighbors, SpecialFunctions, StaticArrays, Statistics
+using Base.Threads, CvxCompress, DSP, Distributed, DistributedArrays, FFTW, LinearAlgebra, NearestNeighbors, SpecialFunctions, StaticArrays, Statistics, Wave_jll
 
 import
 Base.convert,
