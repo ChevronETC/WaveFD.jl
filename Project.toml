@@ -1,5 +1,5 @@
-name = "Wave"
-uuid = "c4b4314a-a0e9-5b81-aa37-810b8cbcd61f"
+name = "WaveFD"
+uuid = "44f9e87b-acd6-44e6-b5b0-e1db9a6b2dd4"
 version = "0.12.0"
 
 [deps]
