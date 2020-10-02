@@ -19,16 +19,16 @@ end
 
 """
 # 2D
-    dtmod = Wave.default_dtmod(stenciltype, Q, D, dz, dx, velmax, dtmod, dtrec, alpha)
-    dtmod = Wave.default_dtmod(alpha, dz, dx, velmax, dtrec, dtmod) # assumes courant=1 .. should go away once we become less lazy about doing analysis
+    dtmod = WaveFD.default_dtmod(stenciltype, Q, D, dz, dx, velmax, dtmod, dtrec, alpha)
+    dtmod = WaveFD.default_dtmod(alpha, dz, dx, velmax, dtrec, dtmod) # assumes courant=1 .. should go away once we become less lazy about doing analysis
 """
 default_dtmod(stenciltype::Symbol, Q::Int, D::Int, dz::T, dx::T, velmax::T, dtmod::T, dtrec::T, alpha::T) where {T<:AbstractFloat} = default_dtmod_helper(stenciltype, Q, D, min(dz,dx), velmax, dtmod, dtrec, alpha, 2)
 default_dtmod(alpha::T, dz::T, dx::T, velmax::T, dtrec::T, dtmod::T) where {T<:AbstractFloat} = default_dtmod_helper_helper(min(dz,dx), velmax, one(T), dtmod, dtrec, alpha)
 
 """
 # 3D
-    dtmod = Wave.default_dtmod(stenciltype, Q, D, dz, dy, dx, velmax, dtmod, dtrec, alpha)
-    dtmod = Wave.default_dtmod(alpha, dz, dy, dx, velmax, dtrec, dtmod) # assumes courant=1, lazy option, rather than doing proper analysis
+    dtmod = WaveFD.default_dtmod(stenciltype, Q, D, dz, dy, dx, velmax, dtmod, dtrec, alpha)
+    dtmod = WaveFD.default_dtmod(alpha, dz, dy, dx, velmax, dtrec, dtmod) # assumes courant=1, lazy option, rather than doing proper analysis
 
 where `dtmod::AbstractFloat` is a stable finite-difference time step determined by the C-F-L condition (https://en.wikipedia.org/wiki/Courant%E2%80%93Friedrichs%E2%80%93Lewy_condition).
 A modified Courant number is used for the C-F-L condition, and is determined by the choice of finite-difference stencil and a scaling factor `alpha`.  Making `alpha` smaller should reduce
@@ -52,7 +52,7 @@ an error if it violates C-F-L condition.  However, we will, if needed, reduce `d
 dtmod=-1.0
 dz,dx,velmax,dtrec,alpha=0.01,0.01,5.0,0.004,0.25
 Q,D=8,1
-dtmod = Wave.default_dtmod(:Fornberg, Q, D, dz, dx, velmax, dtmod, dtrec, alpha)
+dtmod = WaveFD.default_dtmod(:Fornberg, Q, D, dz, dx, velmax, dtmod, dtrec, alpha)
 ```
 
 ## Notes
@@ -63,7 +63,7 @@ default_dtmod(stenciltype::Symbol, Q::Int, D::Int, dz::T, dy::T, dx::T, velmax::
 default_dtmod(alpha::T, dz::T, dy::T, dx::T, velmax::T, dtrec::T, dtmod::T) where {T<:AbstractFloat} = default_dtmod_helper_helper(min(dz,dy,dx), velmax, one(T), dtmod, dtrec, alpha)
 
 """
-    it0, ntmod = Wave.default_ntmod(dtrec,dtmod,t0,ntrec)
+    it0, ntmod = WaveFD.default_ntmod(dtrec,dtmod,t0,ntrec)
 
 `it0` the time index corresponding to zero-time, and `ntmod` the total number of time points, including negative time.
 `dtrec`,`dtmod` and `ntrec` are `Real`, while `t0` can either be `Real`, `Array{Array{Real}}` or `DArray{Array{Real}}`.  If `t0` is
@@ -116,19 +116,19 @@ mutable struct TimeInterp{T<:AbstractFloat,C<:Language}
 end
 
 """
-    h = Wave.interpfilters(dtmod, dtrec [, mode=0, impl=Wave.LangC, nthreads=Sys.CPU_THREADS])
+    h = WaveFD.interpfilters(dtmod, dtrec [, mode=0, impl=WaveFD.LangC, nthreads=Sys.CPU_THREADS])
 
 Build an 8 point sinc filter, mapping between `dtmod` and `dtrec` sampling.  The optional parameters are:
 
 * `mode::Int` determines if amplitude is preserved in the forward (mode=0) or adjoint operation (mode=1)
-* `impl::Wave.Language` can be set to either `Wave.LangJulia()` or `Wave.LangC()` to determine which code-path to follow
-* `nthreads`  If `impl=Wave.LangC()`, then OMP is used for threading the 2D and 3D arrays where time is assumed to be along the fast dimension
+* `impl::WaveFD.Language` can be set to either `WaveFD.LangJulia()` or `WaveFD.LangC()` to determine which code-path to follow
+* `nthreads`  If `impl=WaveFD.LangC()`, then OMP is used for threading the 2D and 3D arrays where time is assumed to be along the fast dimension
 
 # Notes
 It is assumed that `dtmod<dtrec`:
 
-* forward operator (see `Wave.interpforward!`) - interpolates from `dtmod` to `dtrec`, preserves amplitude if `mode=0`.  This is the default behaviour.
-* adjoint operator (see `Wave.interpadjoint!`) - interpolates from `dtrec` to `dtmod`, preserves amplitude if `mode=1`
+* forward operator (see `WaveFD.interpforward!`) - interpolates from `dtmod` to `dtrec`, preserves amplitude if `mode=0`.  This is the default behaviour.
+* adjoint operator (see `WaveFD.interpadjoint!`) - interpolates from `dtrec` to `dtmod`, preserves amplitude if `mode=1`
 """
 function interpfilters(dtmod::T, dtrec::T, mode::Int=0, impl::Language=LangC(), nthreads=Sys.CPU_THREADS) where T<:Real
     @assert dtmod <= dtrec
@@ -164,15 +164,15 @@ function interpfilters(dtmod::T, dtrec::T, mode::Int=0, impl::Language=LangC(), 
 end
 
 """
-    Wave.interpadjoint!(h, m, d)
+    WaveFD.interpadjoint!(h, m, d)
 
 Interpolate from `d::Array{T,N}` (coarse) to `m::Array{T,N}` (fine) using the sinc filter coefficients in `h::Array{Array{T,1},1}`.  `h` is built using
-`Wave.interpfilters`.  For example:
+`WaveFD.interpfilters`.  For example:
 
-    Wave.interpadjoint!(Wave.interpfilters(.001,.004), m, d)
+    WaveFD.interpadjoint!(WaveFD.interpfilters(.001,.004), m, d)
 
 Note that we support, `N=1`, `N=2` or `N=3`. If `N=2` or `N=3`, then interpolation is done along the fast dimension.  By default, `interpadjoint!` does not preserve
-amplitude (see `Wave.interpfilters`).
+amplitude (see `WaveFD.interpfilters`).
 """
 function interpadjoint!(H::TimeInterp{T,LangJulia}, m::StridedArray{T,1}, d::StridedArray{T,1}) where T
     if length(m) == length(d)
@@ -210,15 +210,15 @@ end
 end
 
 """
-    Wave.interpforward!(h, d, m)
+    WaveFD.interpforward!(h, d, m)
 
 Interpolate from `m::Array{T,N}` (fine) to `d::Array{T,N}` (coarse) using the sinc filter coefficients in `h::Array{Array{T,1},1}`.  `h` is built using
-`Wave.interpfilters`.  For example:
+`WaveFD.interpfilters`.  For example:
 
-    Wave.interpadjoint!(Wave.interpfilters(.001,.004), m, d)
+    WaveFD.interpadjoint!(WaveFD.interpfilters(.001,.004), m, d)
 
 Note that we support, `N=1`, `N=2` or `N=3`. If `N=2` or `N=3`, then interpolation is done along the fast dimension.  By default, `interpforward!` preserves
-amplitude (see `Wave.interpfilters!`).
+amplitude (see `WaveFD.interpfilters!`).
 """
 function interpforward!(H::TimeInterp{T,LangJulia}, d::StridedArray{T,1}, m::StridedArray{T,1}) where T
     if length(d) == length(m)
@@ -792,7 +792,7 @@ sourceblocks::Vector{SourceBlock}.
 * c are the injection filters (e.g. Hick's coefficients)
 * nbz,nbx are the number of blocks in each dimension
 
-see also Wave.injectdata!
+see also WaveFD.injectdata!
 """
 function source_blocking(nz, nx, nbz, nbx, iz, ix, c::Vector{<:AbstractMatrix{T}}) where {T}
     izrng = source_blocking_range(iz)
@@ -845,13 +845,13 @@ end
   injectdata!(field, data, it, irblk, izblk, ixblk, cblk, izblk_rngs, ixblk_rngs)
 
 Inject data from data[it] into field. `irblk, izblk, ixblk, cblk, izblk_rngs, ixblk_rngs`
-are computed using `Wave.injectdata_range`.
+are computed using `WaveFD.injectdata_range`.
 
 The general work-flow is:
 ```
 nz,nx=size(field)
 nthreads=20
-irblk, izblk, ixblk, cblk, izblk_rngs, ixblk_rngs = Wave.injectdata_range(nz,nx,nbz,nbx,iz,ix,c)
+irblk, izblk, ixblk, cblk, izblk_rngs, ixblk_rngs = WaveFD.injectdata_range(nz,nx,nbz,nbx,iz,ix,c)
 for it = 1:ntrec # time loop
     injectdata!(field, data, it, irblk, izblk, ixblk, cblk, izblk_rngs, ixblk_rngs)
     ...
@@ -904,7 +904,7 @@ end
   injectdata!(field, data, it, iz, ix, c[, bz=10])
 """
 function injectdata!(field::AbstractArray{T,2}, data::AbstractArray{T,2}, it::Integer, iz::AbstractVector{Vector{Int64}}, ix::AbstractVector{Vector{Int64}}, c::AbstractVector{Array{C,2}}, nbz::Integer=10, nbx::Integer=10) where {T,C}
-    blocks = Wave.source_blocking(size(field)..., nbz, nbx, iz, ix, c)
+    blocks = WaveFD.source_blocking(size(field)..., nbz, nbx, iz, ix, c)
     injectdata!(field, blocks, data, it)
 end
 
@@ -912,7 +912,7 @@ end
   injectdata!(field, data, it, iz, iy, ix, c[,bz=10])
 """
 function injectdata!(field::AbstractArray{T,3}, data::AbstractArray{T,2}, it::Integer, iz::AbstractVector{Vector{Int64}}, iy::AbstractVector{Vector{Int64}}, ix::AbstractVector{Vector{Int64}}, c::AbstractVector{Array{C,3}}, nbz::Integer=1, nby::Integer=10, nbx::Integer=10) where {T,C}
-    blocks = Wave.source_blocking(size(field)..., nbz, nby, nbx, iz, iy, ix, c)
+    blocks = WaveFD.source_blocking(size(field)..., nbz, nby, nbx, iz, iy, ix, c)
     injectdata!(field, blocks, data, it)
 end
 

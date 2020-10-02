@@ -1,6 +1,6 @@
-Wave.jl
+WaveFD.jl
 =======
-Wave.jl contains a reference collection of single time step wavefield propagation codes. 
+WaveFD.jl contains a reference collection of single time step wavefield propagation codes. 
 The propagator kernels are written in c++, and we expose both c++ and Julia APIs for propagating wavefields. 
 
 # Naming conventions
@@ -30,7 +30,7 @@ means that coverage statistics for tests in this package do not reflect the code
 by the unit tests in `JetPackWave`.
 
 # Notes
-In addition to propagators, the Julia components of Wave.jl are meant to provide:
+In addition to propagators, the Julia components of WaveFD.jl are meant to provide:
 	* imaging conditions
 	* wavelets
 	* wavefield injection/extraction

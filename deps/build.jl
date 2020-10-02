@@ -16,7 +16,7 @@ end
 # build
 #
 
-# Wave.jl
+# WaveFD.jl
 cd("$(BUILD_HOME)/../src")
 run(`make`)
 run(`make install`)

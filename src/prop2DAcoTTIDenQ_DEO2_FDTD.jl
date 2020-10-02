@@ -79,19 +79,19 @@ end
 # v
 struct Prop2DAcoTTIDenQ_DEO2_FDTD_Model_V <: Prop2DAcoTTIDenQ_DEO2_FDTD_Model end
 function forwardBornInjection!(prop::Prop2DAcoTTIDenQ_DEO2_FDTD,::Type{Prop2DAcoTTIDenQ_DEO2_FDTD_Model_V},dmodel,wavefield)
-    ccall((:Prop2DAcoTTIDenQ_DEO2_FDTD_ForwardBornInjection_V, Wave._jl_libprop2DAcoTTIDenQ_DEO2_FDTD), Cvoid,
+    ccall((:Prop2DAcoTTIDenQ_DEO2_FDTD_ForwardBornInjection_V, WaveFD._jl_libprop2DAcoTTIDenQ_DEO2_FDTD), Cvoid,
         (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat},         Ptr{Cfloat}),
          prop.p,     dmodel["v"], wavefield["pspace"], wavefield["mspace"])
 end
 
 function adjointBornAccumulation!(prop::Prop2DAcoTTIDenQ_DEO2_FDTD,::Type{Prop2DAcoTTIDenQ_DEO2_FDTD_Model_V},dmodel,wavefield)
-    ccall((:Prop2DAcoTTIDenQ_DEO2_FDTD_AdjointBornAccumulation_V, Wave._jl_libprop2DAcoTTIDenQ_DEO2_FDTD), Cvoid,
+    ccall((:Prop2DAcoTTIDenQ_DEO2_FDTD_AdjointBornAccumulation_V, WaveFD._jl_libprop2DAcoTTIDenQ_DEO2_FDTD), Cvoid,
         (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat},         Ptr{Cfloat}),
          prop.p,     dmodel["v"], wavefield["pspace"], wavefield["mspace"])
 end
 
 function show(io::IO, prop::Prop2DAcoTTIDenQ_DEO2_FDTD)
-    nx = ccall((:Prop2DAcoTTIDenQ_DEO2_FDTD_getNx, Wave._jl_libprop2DAcoTTIDenQ_DEO2_FDTD), (Clong), (Ptr{Cvoid},), prop.p)
-    nz = ccall((:Prop2DAcoTTIDenQ_DEO2_FDTD_getNz, Wave._jl_libprop2DAcoTTIDenQ_DEO2_FDTD), (Clong), (Ptr{Cvoid},), prop.p)
+    nx = ccall((:Prop2DAcoTTIDenQ_DEO2_FDTD_getNx, WaveFD._jl_libprop2DAcoTTIDenQ_DEO2_FDTD), (Clong), (Ptr{Cvoid},), prop.p)
+    nz = ccall((:Prop2DAcoTTIDenQ_DEO2_FDTD_getNz, WaveFD._jl_libprop2DAcoTTIDenQ_DEO2_FDTD), (Clong), (Ptr{Cvoid},), prop.p)
     write(io, "Prop2DAcoTTIDenQ_DEO2_FDTD -- nx,nz; $nx,$nz")
 end
