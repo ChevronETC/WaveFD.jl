@@ -1,7 +1,5 @@
 using BenchmarkTools, Random, Statistics, WaveFD
 
-@info "Threads.nthreads() = $(Threads.nthreads())"
-
 _nthreads = [2^i for i in 0:floor(Int,log2(Sys.CPU_THREADS))]
 if Sys.CPU_THREADS ∉ _nthreads
     push!(_nthreads, Sys.CPU_THREADS)
