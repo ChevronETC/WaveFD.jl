@@ -26,10 +26,10 @@ For examples consider the propagator names in the table below.
 
 ## Note on unit tests and coverage
 These single time step propagators are used to contruct nonlinear modeling operators and their
-linearizations in the `JetPackWave` package. An extensive suite of unit tests guaranteeing
-correctness is implemented in `JetPackWave`, and therefore is not re-implemented here. This
+linearizations in the `JetPackWaveFD` package. An extensive suite of unit tests guaranteeing
+correctness is implemented in `JetPackWaveFD`, and therefore is not re-implemented here. This
 means that coverage statistics for tests in this package do not reflect the code as excersized
-by the unit tests in `JetPackWave`.
+by the unit tests in `JetPackWaveFD`.
 
 ## Additional Notes
 In addition to propagators, the Julia components of WaveFD.jl are meant to provide:
