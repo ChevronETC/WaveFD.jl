@@ -1,20 +1,29 @@
 \documentclass[10pt,fleqn]{article}
 \usepackage{amsmath}
-%\usepackage{amssymb}
+\usepackage{cancel}
 \usepackage[letterpaper, landscape, margin=1in]{geometry}
+
+\setlength{\parindent}{0pt}
 
 \begin{document}
 
-\section{Pseudo- visco- acoustic VTI variable density wave propagation with coupled second order system, self adjoint equation}
+\section{Pseudo- visco- acoustic VTI variable density coupled second order self adjoint system}
 John Washbourne, Ken Bube\\
-\today
+September 20, 2013
 
-\subsection{notes}
-We apply the $\displaystyle \frac{\partial}{\partial t} \frac{\omega}{Q} $ term that implements the absorbing boundary conditions 
-using a backward numerical difference.  We have tested a centered difference and found it to be much less stable.
+\section{Introduction}
+This note shows the derivation of \textit{time update equations} for the pseudo- visco-
+acoustic vertical transverse isotropy (VTI) variable density coupled second order self-adjoint
+system. We implement attenuation with a monochromatic approximation to Maxwell bodies, and use
+this attenuation model to implement zero outgoing absorbing boundary conditions on the exterior
+of the modeling domain.
+\vspace{10pt}
 
-\subsection{symbols}
+The time update equations are used to advance solutions in time, expressing the quasi-p
+pressure wavefield $P_{(t + \Delta)}$ and quasi-s pressure wavefield $M_{(t + \Delta)}$
+at the next time step $(t + \Delta)$ as functions of $P_{(t - \Delta)}, P_{(t)}$ and $M_{(t - \Delta)}, P_{(t)}$
 
+\subsection{Symbols}
 \begin{center}
 \begin{tabular}{ll} \\[-10pt]
 $\partial_t,\ \partial_x,\ \partial_y,\ \partial_z$ & $ 
@@ -27,38 +36,52 @@ $P, M$ & quasi-P, quasi-S wavefields\\[10pt]
 $s_p(x,y,z,t),\ s_m(x,y,z,t)$ & quasi-P, quasi-S source terms\\[10pt]
 $f$ & $ 1 - \displaystyle \frac{V_p^2}{V_s^2} $\\[10pt]
 $ \widehat{\eta} $ & $ \sqrt{ \displaystyle \frac{2 \left(\epsilon - \delta\right) }{f + 2 \epsilon } } $\\[10pt]
-$b$ & buoyancy = $\displaystyle \frac{1}{\rho} $ \\[10pt]
+$b$ & buoyancy = $\displaystyle 1/\rho $ (reciprocal density) \\[10pt]
 $ \{\ V_p,\ \epsilon,\ \widehat{\eta}\ \} $ & Material parameters \\[10pt]
 \end{tabular}
 \end{center}
 
-\subsection{Time update numerical difference formulas}
-\label{sec:diff}
-\begin{equation}
-\begin{aligned}
-\partial_t P  &= \frac{P^t - P^{t-\Delta} }{ \Delta}  \\[10pt]
-\partial_t^2 P &= \frac{P^{t+\Delta} - 2 P^t + P^{t-\Delta} }{ \Delta^2 } \qquad \rightarrow \qquad
-P^{t+\Delta} = \Delta^2 \partial_t^2 P + 2 P^t - P^{t-\Delta} 
-\end{aligned}
-\nonumber
-\end{equation}
+\newpage
+\subsection{Coupled second order modeling system}
+Equation \ref{eq:system} shows the modeling system with absorbing boundaries
+implemented using amplitude only (dissipation only, no dispersion) Q.
+\vspace{10pt}
 
-\subsection{2x2 coupled second order system}
+We apply the time derivatives in the terms $\displaystyle \frac{\omega}{Q} \partial_t p$
+and $\displaystyle \frac{\omega}{Q} \partial_t m$ using a backward one-sided numerical
+difference. We tested both forward one-sided and centered difference alternatives and
+found them to be less stable.
 
 \begin{equation}
 \begin{aligned}
-&\frac{b}{V_p^2} \left( \partial_t^2(P) + \frac{\omega}{Q} \partial_t(P) \right) &=& \ 
+&\frac{b}{V_p^2} \left( \partial_t^2(P) + \frac{\omega}{Q} \partial_t(P) \right) = \ 
 \partial_x \left( b (1 + 2 \epsilon) \partial_x(P) \right) +
 \partial_y \left( b (1 + 2 \epsilon) \partial_y(P) \right) +
 \partial_z \left( b (1 - f \widehat{\eta}^2) \partial_z(P) \right) + 
 \partial_z \left( b f \widehat{\eta} \sqrt{1 - \widehat{\eta}^2} \partial_z(M) \right) + s_p \\[10pt]
-&\frac{b}{V_p^2} \left( \partial_t^2(M) + \frac{\omega}{Q} \partial_t(M) \right) &=& \ 
+&\frac{b}{V_p^2} \left( \partial_t^2(M) + \frac{\omega}{Q} \partial_t(M) \right) = \ 
 \partial_x \left( b (1 - f) \partial_x(M) \right) +
 \partial_y \left( b (1 - f) \partial_y(M) \right) +
 \partial_z \left( b (1 - f + f \widehat{\eta}^2) \partial_z(M) \right) + 
 \partial_z \left( b f \widehat{\eta} \sqrt{1 - \widehat{\eta}^2} \partial_z(P) \right) + s_m \\[10pt]
 \end{aligned}
-\nonumber
+\label{eq:system}
+\end{equation}
+
+\section{Time update equations}
+
+\subsection{Time update numerical difference formulas, first and second order}
+\begin{equation}
+\partial_t p = \frac{1}{\Delta} \left[ p_{(t)} - p_{(t - \Delta)} \right]
+\label{eq:diff1}
+\end{equation}
+
+\begin{equation}
+\begin{aligned}
+\partial_t^2 p &= \frac{1}{\Delta^2} \left[ p_{(t+\Delta)} - 2 p_{(t)} + p_{(t - \Delta)} \right] \\[10pt]
+p_{(t+\Delta)} &= \Delta^2 \partial_t^2 p + 2 p_{(t)} - p_{(t - \Delta)}
+\end{aligned}
+\label{eq:diff2}
 \end{equation}
 
 \subsection{Rearrange terms for $\partial_t^2(P)$ and $\partial_t^2(M)$ }
@@ -84,7 +107,7 @@ P^{t+\Delta} = \Delta^2 \partial_t^2 P + 2 P^t - P^{t-\Delta}
 \nonumber
 \end{equation}
 
-\subsection{Apply time update difference formulas}
+\subsection{Apply equations \ref{eq:diff1} and \ref{eq:diff2}, and rearrange}
 \begin{equation}
 \begin{aligned}
 P^{t+\Delta} = \ 
