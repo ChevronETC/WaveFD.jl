@@ -10,4 +10,4 @@ VtiAcousticQ.pdf: VtiAcousticQ.tex
 	pdflatex VtiAcousticQ.tex
 
 clean:
-	/bin/rm -rf *.aux *.log *.pdf
+	/bin/rm -rf *.aux *.log *gz *fls *latexmk
