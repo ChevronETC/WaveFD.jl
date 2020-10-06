@@ -12,3 +12,6 @@ Makefile
 cmake_install.cmake
 install_manifest.txt
 Manifest.toml
+*latexmk
+*fls
+*gz
