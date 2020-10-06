@@ -1,6 +1,6 @@
-Wave.jl
-=======
-Wave.jl contains reference implementations of a collection of single time step wavefield propagation codes. The code is written in a mix of Julia and C++. For all propagators, we expose Julia and C++ APIs for propagating wavefields.  
+WaveFD.jl
+=========
+WaveFD.jl contains reference implementations of a collection of single time step wavefield propagation codes. The code is written in a mix of Julia and C++. For all propagators, we expose Julia and C++ APIs for propagating wavefields.  
 
 # Propagator names
 The propagator names are descriptive of physics and dimensionality, and described in the table below.
