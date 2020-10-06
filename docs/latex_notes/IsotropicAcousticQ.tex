@@ -1,34 +1,72 @@
 \documentclass[10pt,fleqn]{article}
 \usepackage{amsmath}
 \usepackage{cancel}
-%\usepackage{amssymb}
 \usepackage[letterpaper, landscape, margin=1in]{geometry}
 
 \setlength{\parindent}{0pt}
 
 \begin{document}
 
-\section{Isotropic acoustic modeling with Q absorbing boundaries, self adjoint equation}
+\section{Isotropic visco-acoustic variable density second order self-adjoint system}
 John Washbourne, Ken Bube\\
-\today
+September 20, 2013
+
+\section{Introduction}
+This note shows the derivation of \textit{time update equations} and the linearization 
+for the isotropic
+variable density self-adjoint system. We implement attenuation with a monochromatic
+approximation to Maxwell bodies, and use this attenuation model to implement zero
+outgoing absorbing boundary conditions on the exterior of the modeling domain.
 \vspace{10pt}
 
-Equation \ref{eq:system} shows the acoustic isotropic second order modeling equation with absorbing boundaries implemented using amplitude only Q.
-Note that we apply the time derivative in the term $\displaystyle \frac{\omega}{Q} \partial_t p $
-using a backward numerical difference.  We have tested a centered difference and found it to be much less stable.
+The time update equations are used to advance solutions in time, expressing the pressure
+wavefield at time $p_{(t + \Delta)}$ as a function of $p_{(t - \Delta)}$ and $p_{(t)}$.
+
+\subsection{Symbols}
+\begin{center}
+\begin{tabular}{ll} \\[-10pt]
+$\partial_t$ & $\displaystyle \frac{\partial }{\partial t}$ \\[10pt]
+$\nabla p $ & Laplacian: $ \left(
+	\displaystyle \frac{\partial }{\partial x} +
+	\displaystyle \frac{\partial }{\partial y} +
+	\displaystyle \frac{\partial }{\partial z} \right) $ \\[10pt]
+$\omega, Q$ & reference frequency for attentuation, attenuation at frequency $\omega$ \\[10pt]
+$P$ & Pressure wavefields\\[10pt]
+$S(x,y,z,t)$ & Pressure source term\\[10pt]
+$b$ & buoyancy = $\displaystyle 1/\rho $ (reciprocal density) \\[10pt]
+$ \{\ V_p\ \} $ & Material parameters \\[10pt]
+\end{tabular}
+\end{center}
+
+\subsection{Modeling system}
+Equation \ref{eq:system} shows the modeling system with absorbing boundaries
+implemented using amplitude only (dissipation only, no dispersion) Q.
+\vspace{10pt}
+
+We apply the time derivative in the term $\displaystyle \frac{\omega}{Q} \partial_t p$
+using a backward none-sided numerical difference. We tested both forward one-sided
+and centered difference alternatives and found them to be less stable.
 
 \begin{equation}
 \frac{1}{v^2} \left( \partial_t^2 p + \frac{\omega}{Q} \partial_t p \right) = \nabla p + S
 \label{eq:system}
 \end{equation}
 
-\section{Time update}
-\subsection{Time update numerical difference formulas, first and second}
+\newpage
+\section{Time update equations}
+
+\subsection{Time update numerical difference formulas, first and second order}
+\begin{equation}
+\partial_t p = \frac{1}{\Delta} \left[ p_{(t)} - p_{(t - \Delta)} \right]
+\label{eq:diff1}
+\end{equation}
+
 \begin{equation}
 \begin{aligned}
-\partial_t p  &= \frac{1}{\Delta} \left[ p_{(t)} - p_{(t - \Delta)} \right] \\[10pt]
-\partial_t^2 p &= \frac{1}{\Delta^2} \left[ p_{(t+\Delta)} - 2 p_{(t)} + p_{(t - \Delta)} \right] \quad \rightarrow \qquad p_{(t+\Delta)} = \Delta^2 \partial_t^2 p + 2 p_{(t)} - p_{(t - \Delta)}
+\partial_t^2 p &= \frac{1}{\Delta^2} \left[ p_{(t+\Delta)} - 2 p_{(t)} + p_{(t - \Delta)} \right] \\[10pt]
+p_{(t+\Delta)} &= \Delta^2 \partial_t^2 p + 2 p_{(t)} - p_{(t - \Delta)}
 \end{aligned}
+\label{eq:diff2}
 \end{equation}
 
 \subsection{Rearrange equation \ref{eq:system} for $\partial_t^2 p$}
@@ -36,7 +74,7 @@ using a backward numerical difference.  We have tested a centered difference and
 \partial_t^2 p = v^2 \left( \nabla p + S \right) - \frac{\omega}{Q} \partial_t p 
 \end{equation}
 
-\subsection{Apply time update difference formulas and rearrange}
+\subsection{Apply equations \ref{eq:diff1} and \ref{eq:diff2}, and rearrange}
 \begin{equation}
 p_{(t+\Delta)} = \Delta^2 v^2 \left( \nabla p + S \right) - \Delta \frac{\omega}{Q} \left[ p_{(t)} - p_{(t - \Delta)} \right] 
 + 2 p_{(t)} - p_{(t - \Delta)} 
@@ -104,7 +142,8 @@ and replace $\displaystyle p \rightarrow \displaystyle (p_0 + \delta p)$}
 \end{aligned}
 \end{equation}
 
-Note: it is procedurally simplest to serialize the quantity $\displaystyle \left( v_0^2 \nabla p_0 + v_0^2 S \right)$ when we perform 
-nonlinear forward modeling, and use that field as the Born source for the linearized forward and adjoint operators.
-
+Note: it is procedurally simplest to serialize the quantity
+$\displaystyle \left( v_0^2 \nabla p_0 + v_0^2 S \right)$ when we perform nonlinear
+forward modeling, and use that field as the Born source for the linearized forward
+and adjoint operators.  
 \end{document}
