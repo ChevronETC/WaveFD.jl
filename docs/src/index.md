@@ -21,6 +21,7 @@ Please see `benchmark/README.md` for details.
 
 #### Architecture 
 `Intel(R) Xeon(R) Platinum 8168 CPU @ 2.70GHz, 2 sockets, 44 cores`
+
 Azure VM SKU: `Standard-HC44rs`
 
 #### Model size
