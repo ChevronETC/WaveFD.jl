@@ -5,7 +5,7 @@
 *.so
 *.o
 benchmark/tune.json
-benchmark/*.md
+benchmark/results*.md
 CMakeCache.txt
 CMakeFiles
 Makefile

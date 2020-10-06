@@ -20,6 +20,11 @@ function export_markdown_mcells(filename, results)
     end
 
     io = open(filename, "w")
+
+    cpuname = Sys.cpu_info()[1].model
+    write(io, @sprintf("# WaveFD Propagator Throughput\n"))
+    write(io, @sprintf("## %s\n", cpuname))
+
     write(io, "|    ")
     for column in columns
         write(io, " | $column")
