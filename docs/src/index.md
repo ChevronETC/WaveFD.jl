@@ -33,7 +33,7 @@ Azure VM SKU: `Standard-HC44rs`
 October 6, 2020
 
 #### Throughput (megacells/second)
-|     | 1 threads | 2 threads | 4 threads | 8 threads | 16 threads | 32 threads | 44 threads|
+|------| 1 threads | 2 threads | 4 threads | 8 threads | 16 threads | 32 threads | 44 threads|
 |------| ------ | ------ | ------ | ------ | ------ | ------ | ------ |
 | 2DAcoIsoDenQ_DEO2_FDTD | 285.56 MC/s (3.35 %) | 547.28 MC/s (4.04 %) | 1037.57 MC/s (0.98 %) | 1847.97 MC/s (5.67 %) | 3020.84 MC/s (2.95 %) | 2593.60 MC/s (4.14 %) | 2006.65 MC/s (6.07 %)|
 | 2DAcoVTIDenQ_DEO2_FDTD | 51.97 MC/s (1.36 %) | 102.39 MC/s (0.92 %) | 198.96 MC/s (1.91 %) | 376.68 MC/s (1.83 %) | 659.94 MC/s (1.21 %) | 709.06 MC/s (2.99 %) | 581.64 MC/s (5.33 %)|
