@@ -22,7 +22,7 @@ function export_markdown_mcells(filename, results)
     io = open(filename, "w")
 
     cpuname = Sys.cpu_info()[1].model
-    write(io, @sprintf("# WaveFD Throughput on %s", cpuname))
+    write(io, @sprintf("# WaveFD Throughput on %s\n", cpuname))
 
     write(io, "|    ")
     for column in columns
