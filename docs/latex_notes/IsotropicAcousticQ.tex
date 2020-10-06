@@ -5,11 +5,13 @@
 
 \setlength{\parindent}{0pt}
 
+
 \begin{document}
 
 \section{Isotropic visco-acoustic variable density second order self-adjoint system}
 John Washbourne, Ken Bube\\
 September 20, 2013
+
 
 \section{Introduction}
 This note shows the derivation of \textit{time update equations} and the linearization 
@@ -29,8 +31,10 @@ $\partial_t$ & $\displaystyle \frac{\partial }{\partial t}$ \\[10pt]
 $\nabla p $ & Laplacian: $ \left(
 	\displaystyle \frac{\partial }{\partial x} +
 	\displaystyle \frac{\partial }{\partial y} +
-	\displaystyle \frac{\partial }{\partial z} \right) $ \\[10pt]
-$\omega, Q$ & reference frequency for attentuation, attenuation at frequency $\omega$ \\[10pt]
+	\displaystyle \frac{\partial }{\partial z} \right) p $ \\[15pt]
+$\Delta$ & Temporal sampling rate \\[10pt]
+$\omega$ & reference frequency for attenuation \\[10pt]
+$Q$ & attenuation at frequency $\omega$ \\[10pt]
 $P$ & Pressure wavefields\\[10pt]
 $S(x,y,z,t)$ & Pressure source term\\[10pt]
 $b$ & buoyancy = $\displaystyle 1/\rho $ (reciprocal density) \\[10pt]
@@ -38,13 +42,14 @@ $ \{\ V_p\ \} $ & Material parameters \\[10pt]
 \end{tabular}
 \end{center}
 
+\newpage
 \subsection{Modeling system}
 Equation \ref{eq:system} shows the modeling system with absorbing boundaries
 implemented using amplitude only (dissipation only, no dispersion) Q.
 \vspace{10pt}
 
 We apply the time derivative in the term $\displaystyle \frac{\omega}{Q} \partial_t p$
-using a backward none-sided numerical difference. We tested both forward one-sided
+using a backward one-sided numerical difference. We tested both forward one-sided
 and centered difference alternatives and found them to be less stable.
 
 \begin{equation}
@@ -52,7 +57,6 @@ and centered difference alternatives and found them to be less stable.
 \label{eq:system}
 \end{equation}
 
-\newpage
 \section{Time update equations}
 
 \subsection{Time update numerical difference formulas, first and second order}
