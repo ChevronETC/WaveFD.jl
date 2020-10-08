@@ -9,11 +9,11 @@ const SUITE = BenchmarkGroup()
 
 z0,y0,x0,dz,dy,dx,nt,dt = 0.0,0.0,0.0,10.0,10.0,10.0,3000,0.001
 
-n_2D = (z=get(ENV,"2D_NZ",501), x=get(ENV,"2D_NX",1001))
-n_3D = (z=get(ENV,"3D_NZ",101), y=get(ENV,"3D_NY",201), x=get(ENV,"3D_NX",301))
+n_2D = (z=parse(Int,get(ENV,"2D_NZ","501")), x=parse(Int,get(ENV,"2D_NX","1001")))
+n_3D = (z=parse(Int,get(ENV,"3D_NZ","101")), y=parse(Int,get(ENV,"3D_NY","201")), x=parse(Int,get(ENV,"3D_NX","301")))
 
-nb_2D = (z=get(ENV,"2D_NBZ",n_2D.z), x=get(ENV,"2D_NBX",8))
-nb_3D = (z=get(ENV,"3D_NBZ",n_3D.z), y=get(ENV,"3D_NBY",8), x=get(ENV,"3D_NBX",8))
+nb_2D = (z=parse(Int,get(ENV,"2D_NBZ","$(n_2D.z)")), x=parse(Int,get(ENV,"2D_NBX","8")))
+nb_3D = (z=parse(Int,get(ENV,"3D_NBZ","$(n_3D.z)")), y=parse(Int,get(ENV,"3D_NBY","8")), x=parse(Int,get(ENV,"3D_NBX","8")))
 
 @info "size 2D: $n_2D, use ENV[\"2D_NZ\"], ENV[\"2D_NX\"] to customize"
 @info "size 3D: $n_3D, use ENV[\"3D_NZ\"], ENV[\"3D_NY\"], ENV[\"3D_NX\"] to customize"
