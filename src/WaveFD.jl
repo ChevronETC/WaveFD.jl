@@ -1,6 +1,6 @@
 module WaveFD
 
-using Base.Threads, CvxCompress, DSP, Distributed, DistributedArrays, FFTW, LinearAlgebra, NearestNeighbors, SpecialFunctions, StaticArrays, Statistics, WaveFD_jll
+using Base.Threads, CvxCompress, DSP, Distributed, DistributedArrays, FFTW, LinearAlgebra, NearestNeighbors, Random, SpecialFunctions, StaticArrays, Statistics, WaveFD_jll
 
 import
 Base.convert,
