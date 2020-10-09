@@ -21,9 +21,7 @@ function export_markdown_mcells(filename, results)
 
     io = open(filename, "w")
 
-    cpuname = Sys.cpu_info()[1].model
-    write(io, @sprintf("# WaveFD Propagator Throughput\n"))
-    write(io, @sprintf("## %s\n", cpuname))
+    write(io, "# WaveFD Propagator Throughput\n\n")
 
     write(io, "|    ")
     for column in columns
@@ -44,5 +42,10 @@ function export_markdown_mcells(filename, results)
         end
         write(io, "|\n")
     end
+
+    write(io, "\n## Julia versioninfo\n")
+    write(io, "```\n")
+    write(io, results.vinfo)
+    write(io,"```\n")
     close(io)
 end
