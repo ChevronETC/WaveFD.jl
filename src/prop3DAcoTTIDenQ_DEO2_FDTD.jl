@@ -100,7 +100,6 @@ function tilesize(::Type{Prop3DAcoTTIDenQ_DEO2_FDTD}; nz, ny, nx, rngy=4:2:64, r
         @info "by=$by, bx=$bx"
         prop = Prop3DAcoTTIDenQ_DEO2_FDTD(nz=nz, ny=ny, nx=nx, nbz=nz, nby=by, nbx=bx, nthreads=nthreads)
 
-        for _f in (:V, :Eps, :Eta, :SinTheta, :CosTheta, :SinPhi, :CosPhi, :B, :F, :PSpace, :MSpace, :PCur, :POld, :MCur, :MOld, :TmpPg1, :TmpPg3, :TmpMg1, :TmpMg3, :DtOmegaInvQ)
         v = V(prop)
         ϵ = Eps(prop)
         η = Eta(prop)
