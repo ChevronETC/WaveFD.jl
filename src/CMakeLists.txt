@@ -4,6 +4,7 @@ project(WaveFD)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -ffast-math")
 
 option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
 
