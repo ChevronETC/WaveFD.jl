@@ -100,10 +100,27 @@ function tilesize(::Type{Prop3DAcoVTIDenQ_DEO2_FDTD}; nz, ny, nx, rngy=4:2:64, r
     for (iby,by) in enumerate(rngy), (ibx,bx) in enumerate(rngx)
         @info "by=$by, bx=$bx"
         prop = Prop3DAcoVTIDenQ_DEO2_FDTD(nz=nz, ny=ny, nx=nx, nbz=nz, nby=by, nbx=bx, nthreads=nthreads)
+
+        v = WaveFD.V(prop)
+        ϵ = WaveFD.Eps(prop)
+        η = WaveFD.Eta(prop)
+        b = WaveFD.B(prop)
+        pcur = WaveFD.PCur(prop)
+        pold = WaveFD.POld(prop)
+        mcur = WaveFD.MCur(prop)
+        mold = WaveFD.MOld(prop)
+
+        rand!(pcur)
+        rand!(pold)
+        rand!(mcur)
+        rand!(mold)
+
         t = 0.0
+        set_zero_subnormals(true)
         for i = 1:N
             t += @elapsed propagateforward!(prop)
         end
+        set_zero_subnormals(false)
         speeds[iby,ibx] = N*prod(size(prop))/1000/1000/t
         free(prop)
     end

@@ -99,10 +99,41 @@ function tilesize(::Type{Prop3DAcoTTIDenQ_DEO2_FDTD}; nz, ny, nx, rngy=4:2:64, r
     for (iby,by) in enumerate(rngy), (ibx,bx) in enumerate(rngx)
         @info "by=$by, bx=$bx"
         prop = Prop3DAcoTTIDenQ_DEO2_FDTD(nz=nz, ny=ny, nx=nx, nbz=nz, nby=by, nbx=bx, nthreads=nthreads)
+
+        v = V(prop)
+        ϵ = Eps(prop)
+        η = Eta(prop)
+        sinθ = SinTheta(prop)
+        cosθ = CosTheta(prop)
+        sinϕ = SinPhi(prop)
+        cosϕ = CosPhi(prop)
+        b = B(prop)
+        f = F(prop)
+        pcur = PCur(prop)
+        pold = POld(prop)
+        mcur = MCur(prop)
+        mold = MOld(prop)
+
+        v .= 1500
+        ϵ .= 1
+        η .= 1
+        sinθ .= 0
+        cosθ .= 1
+        sinϕ .= 0
+        cosϕ .= 1
+        b .= 1
+        f .= 1
+        rand!(pcur)
+        rand!(pold)
+        rand!(mcur)
+        rand!(mold)
+
         t = 0.0
+        set_zero_subnormals(true)
         for i = 1:N
             t += @elapsed propagateforward!(prop)
         end
+        set_zero_subnormals(false)
         speeds[iby,ibx] = N*prod(size(prop))/1000/1000/t
         free(prop)
     end
