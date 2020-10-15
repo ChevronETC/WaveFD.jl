@@ -54,8 +54,10 @@ end
     x = -1 .+ 2 .* rand(T,nz,ny,nx)
     y = -1 .+ 2 .* rand(T,nz,ny,nx)
 
-    x_sub = @view x[10:end-10,10:end-10,10:end-10]
-    y_sub = @view y[10:end-10,10:end-10,10:end-10]
+    rng = (10:nz-10,10:ny-10,10:nx-10)
+
+    x_sub = @view x[rng...]
+    y_sub = @view y[rng...]
 
     nz, ny, nx = size(x_sub)
 
@@ -64,22 +66,22 @@ end
     open(comp)
 
     io = style == :file ? open("test.bin", "w") : IOBuffer()
-    WaveFD.compressedwrite(io, comp, 1, x_sub)
-    WaveFD.compressedwrite(io, comp, 2, y_sub)
+    WaveFD.compressedwrite(io, comp, 1, x, rng)
+    WaveFD.compressedwrite(io, comp, 2, y, rng)
     style == :file && close(io)
 
     xx = copy(x)
     yy = copy(y)
 
-    xx_sub = @view xx[10:end-10,10:end-10,10:end-10]
-    yy_sub = @view yy[10:end-10,10:end-10,10:end-10]
+    xx_sub = @view xx[rng...]
+    yy_sub = @view yy[rng...]
 
-    xx_sub[:] .= 0.0
-    yy_sub[:] .= 0.0
+    xx_sub .= 0.0
+    yy_sub .= 0.0
 
     io = style == :file ? open("test.bin") : io
-    WaveFD.compressedread!(io, comp, 1, xx_sub)
-    WaveFD.compressedread!(io, comp, 2, yy_sub)
+    WaveFD.compressedread!(io, comp, 1, xx, rng)
+    WaveFD.compressedread!(io, comp, 2, yy, rng)
     close(io)
 
     snr_x = 10*log10(norm(x)^2 / norm(x .- xx)^2)
@@ -147,8 +149,10 @@ end
     x = -1 .+ 2 .* rand(T,nz,nx)
     y = -1 .+ 2 .* rand(T,nz,nx)
 
-    x_sub = @view x[10:end-10,10:end-10]
-    y_sub = @view y[10:end-10,10:end-10]
+    rng = (10:nz-10,10:nx-10)
+
+    x_sub = @view x[rng...]
+    y_sub = @view y[rng...]
 
     nz, nx = size(x_sub)
 
@@ -157,22 +161,22 @@ end
     open(comp)
 
     io = style == :file ? open("test.bin", "w") : IOBuffer()
-    WaveFD.compressedwrite(io, comp, 1, x_sub)
-    WaveFD.compressedwrite(io, comp, 2, y_sub)
+    WaveFD.compressedwrite(io, comp, 1, x, rng)
+    WaveFD.compressedwrite(io, comp, 2, y, rng)
     style == :file && close(io)
 
     xx = copy(x)
     yy = copy(y)
 
-    xx_sub = @view xx[10:end-10,10:end-10]
-    yy_sub = @view y[10:end-10,10:end-10]
+    xx_sub = @view xx[rng...]
+    yy_sub = @view yy[rng...]
 
     xx_sub[:] .= 0.0
     yy_sub[:] .= 0.0
 
     io = style == :file ? open("test.bin") : io
-    WaveFD.compressedread!(io, comp, 1, xx_sub)
-    WaveFD.compressedread!(io, comp, 2, yy_sub)
+    WaveFD.compressedread!(io, comp, 1, xx, rng)
+    WaveFD.compressedread!(io, comp, 2, yy, rng)
     close(io)
 
     snr_x = 10*log10(norm(x)^2 / norm(x .- xx)^2)
