@@ -30,25 +30,30 @@ end
 copy(compressor::Compressor{T,P,C,N}) where {T,P,C,N} = Compressor{T,P,C,N}(copy(compressor.offsets), copy(compressor.lengths), compressor.n,
     compressor.issubarray, copy(compressor.volume), copy(compressor.compressed_volume), copy(compressor.compressor))
 
-function compressedwrite_exception(io, nbytes_written, nbytes)
+@noinline function compressedwrite_exception(io, nbytes_written, nbytes)
     dir = join(split(split(io.name, " ")[2],"/")[1:end-1], "/")
     dir = dir == "" ? "." : dir
     throw(ErrorException("wrote $(nbytes_written) of $(nbytes) on $(gethostname()) for $(io.name), bytes_available=\n$(run(`df -h $(dir)`))\n"))
 end
 
-compressedwrite(io::IO, compressor::Compressor{Float32,Float32,UInt32,N}, ifield::Integer, field::Array{Float32,N}) where {N} = compressedwrite_helper(io, compressor, ifield, field)
+compressedwrite(io::IO, compressor::Compressor{Float32,Float32,UInt32,N}, ifield::Integer, field::DenseArray{Float32,N}) where {N} = compressedwrite_helper(io, compressor, ifield, field)
 
-function compressedwrite(io::IO, compressor::Compressor{Float32,Float32,UInt32,N}, ifield::Integer, field::SubArray{Float32,N}) where N
-    copyto!(compressor.volume, field) # converts from SubArray to Array
+function compressedwrite(io::IO, compressor::Compressor{Float32,Float32,UInt32,N}, ifield::Integer, field::DenseArray{Float32,N}, rng::NTuple{N,UnitRange{Int}}) where N
+    copyto!(compressor.volume, view(field, rng...))
     compressedwrite_helper(io, compressor, ifield, compressor.volume)
 end
 
-function compressedwrite(io::IO, compressor::Compressor{Float64,Float32,UInt32,N}, ifield::Integer, field::AbstractArray{Float64,N}) where N
-    copyto!(compressor.volume, field) # converts from Float64 to Float32, and possibly from SubArray to Array
+function compressedwrite(io::IO, compressor::Compressor{Float64,Float32,UInt32,N}, ifield::Integer, field::DenseArray{Float64,N}) where N
+    copyto!(compressor.volume, field)
     compressedwrite_helper(io, compressor, ifield, compressor.volume)
 end
 
-function compressedwrite_helper(io::IO, compressor::Compressor{T,P,UInt32,N}, ifield::Integer, field::Array{Float32,N}) where {T,P,N}
+function compressedwrite(io::IO, compressor::Compressor{Float64,Float32,UInt32,N}, ifield::Integer, field::DenseArray{Float64,N}, rng::NTuple{N,UnitRange{Int}}) where N
+    copyto!(compressor.volume, view(field, rng...))
+    compressedwrite_helper(io, compressor, ifield, compressor.volume)
+end
+
+function compressedwrite_helper(io::IO, compressor::Compressor{T,P,UInt32,N}, ifield::Integer, field::DenseArray{Float32,N}) where {T,P,N}
     compressor.lengths[ifield] = compress!(compressor.compressed_volume, compressor.compressor, field)
     nbytes = unsafe_write(io, convert(Ptr{UInt8},pointer(compressor.compressed_volume)), compressor.lengths[ifield])
     nbytes == compressor.lengths[ifield] || compressedwrite_exception(io, nbytes, compressor.lengths[ifield])
@@ -57,57 +62,78 @@ function compressedwrite_helper(io::IO, compressor::Compressor{T,P,UInt32,N}, if
     end
 end
 
-function compressedwrite(io::IO, compressor::Compressor{T,T,T,N}, ifield::Integer, field::Array{T,N}) where {T<:Union{Float32,Float64},N}
+function compressedwrite(io::IO, compressor::Compressor{T,T,T,N}, ifield::Integer, field::DenseArray{T,N}) where {T<:Union{Float32,Float64},N}
     nbytes = write(io, field)
     nbytes == length(field)*sizeof(T) || compressedwrite_exception(io, nbytes, compressor.lengths[ifield])
 end
 
-function compressedwrite(io::IO, compressor::Compressor{T,T,T,N}, ifield::Integer, field::SubArray{T,N}) where {T<:Union{Float32,Float64},N}
-    copyto!(compressor.volume, field)
+function compressedwrite(io::IO, compressor::Compressor{T,T,T,N}, ifield::Integer, field::DenseArray{T,N}, rng::NTuple{N,UnitRange{Int}}) where {T<:Union{Float32,Float64},N}
+    _field = view(field, rng...)
+    copyto!(compressor.volume, _field)
     nbytes = write(io, compressor.volume)
-    nbytes == length(field)*sizeof(T) || compressedwrite_exception(io, nbytes, compressor.lengths[ifield])
+    nbytes == length(_field)*sizeof(T) || compressedwrite_exception(io, nbytes, compressor.lengths[ifield])
 end
 
-function compressedwrite(io::IO, compressor::Compressor{Float64,Float32,Float32,N}, ifield::Integer, field::AbstractArray{Float64,N}) where N
+function compressedwrite(io::IO, compressor::Compressor{Float64,Float32,Float32,N}, ifield::Integer, field::DenseArray{Float64,N}) where N
     copyto!(compressor.volume, field)
     nbytes = write(io, compressor.volume)
     nbytes == length(field)*sizeof(Float32) || compressedwrite_exception(io, nbytes, compressor.lengths[ifield])
 end
 
-compressedread!(io::IO, compressor::Compressor{Float32,Float32,UInt32,N}, ifield::Integer, field::Array{Float32,N}) where {N} = compressedread_helper!(io, compressor, ifield, field)
-
-function compressedread!(io::IO, compressor::Compressor{Float32,Float32,UInt32,N}, ifield::Integer, field::SubArray{Float32,N}) where N
-    compressedread_helper!(io, compressor, ifield, compressor.volume)
-    copyto!(field, compressor.volume) # converts from Array to SubArray
+function compressedwrite(io::IO, compressor::Compressor{Float64,Float32,Float32,N}, ifield::Integer, field::DenseArray{Float64,N}, rng::NTuple{N,UnitRange{Int}}) where N
+    _field = view(field, rng...)
+    copyto!(compressor.volume, _field)
+    nbytes = write(io, compressor.volume)
+    nbytes == length(_field)*sizeof(Float32) || compressedwrite_exception(io, nbytes, compressor.lengths[ifield])
 end
 
-function compressedread!(io::IO, compressor::Compressor{Float64,Float32,UInt32,N}, ifield::Integer, field::AbstractArray{Float64,N}) where N
+compressedread!(io::IO, compressor::Compressor{Float32,Float32,UInt32,N}, ifield::Integer, field::DenseArray{Float32,N}) where {N} = compressedread_helper!(io, compressor, ifield, field)
+
+function compressedread!(io::IO, compressor::Compressor{Float32,Float32,UInt32,N}, ifield::Integer, field::DenseArray{Float32,N}, rng::NTuple{N,UnitRange{Int}}) where N
     compressedread_helper!(io, compressor, ifield, compressor.volume)
-    copyto!(field, compressor.volume)  # converts from Float32 to Float64, and from Array to SubArray
+    copyto!(view(field,rng...), compressor.volume)
 end
 
-function compressedread_helper!(io::IO, compressor::Compressor{T,Float32,UInt32,N}, ifield::Integer, field::Array{Float32,N}) where {T,N}
+function compressedread!(io::IO, compressor::Compressor{Float64,Float32,UInt32,N}, ifield::Integer, field::DenseArray{Float64,N}) where N
+    compressedread_helper!(io, compressor, ifield, compressor.volume)
+    copyto!(field, compressor.volume)
+end
+
+function compressedread!(io::IO, compressor::Compressor{Float64,Float32,UInt32,N}, ifield::Integer, field::DenseArray{Float64,N}, rng::NTuple{N,UnitRange{Int}}) where N
+    compressedread_helper!(io, compressor, ifield, compressor.volume)
+    copyto!(view(field, rng...), compressor.volume)
+end
+
+function compressedread_helper!(io::IO, compressor::Compressor{T,Float32,UInt32,N}, ifield::Integer, field::DenseArray{Float32,N}) where {T,N}
     seek(io, compressor.offsets[ifield])
     compressed_volume_ptr = convert(Ptr{UInt8}, pointer(compressor.compressed_volume))
     unsafe_read(io, compressed_volume_ptr, compressor.lengths[ifield])
     decompress!(field, compressor.compressor, compressor.compressed_volume, compressor.lengths[ifield])
 end
 
-function compressedread!(io::IO, compressor::Compressor{T,T,T,N}, ifield::Integer, field::Array{T,N}) where {T<:Union{Float32,Float64},N}
+function compressedread!(io::IO, compressor::Compressor{T,T,T,N}, ifield::Integer, field::DenseArray{T,N}) where {T<:Union{Float32,Float64},N}
     seek(io, (ifield-1)*length(field)*sizeof(T))
     read!(io, field)
 end
 
-function compressedread!(io::IO, compressor::Compressor{T,T,T,N}, ifield::Integer, field::SubArray{T,N}) where {T<:Union{Float32,Float64},N}
-    seek(io, (ifield-1)*length(field)*sizeof(T))
+function compressedread!(io::IO, compressor::Compressor{T,T,T,N}, ifield::Integer, field::DenseArray{T,N}, rng::NTuple{N,UnitRange{Int}}) where {T<:Union{Float32,Float64},N}
+    _field = view(field, rng...)
+    seek(io, (ifield-1)*length(_field)*sizeof(T))
+    read!(io, compressor.volume)
+    copyto!(_field, compressor.volume)
+end
+
+function compressedread!(io::IO, compressor::Compressor{Float64,Float32,Float32,N}, ifield::Integer, field::DenseArray{Float64,N}) where N
+    seek(io, (ifield-1)*length(field)*sizeof(Float32))
     read!(io, compressor.volume)
     copyto!(field, compressor.volume)
 end
 
-function compressedread!(io::IO, compressor::Compressor{Float64,Float32,Float32,N}, ifield::Integer, field::AbstractArray{Float64,N}) where N
-    seek(io, (ifield-1)*length(field)*sizeof(Float32))
+function compressedread!(io::IO, compressor::Compressor{Float64,Float32,Float32,N}, ifield::Integer, field::DenseArray{Float64,N}, rng::NTuple{N,UnitRange{Int}}) where N
+    _field = view(field, rng...)
+    seek(io, (ifield-1)*length(_field)*sizeof(Float32))
     read!(io, compressor.volume)
-    copyto!(field, compressor.volume)
+    copyto!(_field, compressor.volume)
 end
 
 function comptype(comptype, T)
