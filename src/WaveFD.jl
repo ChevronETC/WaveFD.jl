@@ -18,6 +18,11 @@ struct LangJulia <: Language end
 show(io::IO, l::LangC) = write(io, "C")
 show(io::IO, l::LangJulia) = write(io, "Julia")
 
+abstract type ImagingCondition end
+struct ImagingConditionStandard <: ImagingCondition end
+struct ImagingConditionWaveFieldSeparationFWI <: ImagingCondition end
+struct ImagingConditionWaveFieldSeparationRTM <: ImagingCondition end
+
 include("stencil.jl")
 include("spacetime.jl")
 include("compressedio.jl")

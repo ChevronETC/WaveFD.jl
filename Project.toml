@@ -1,6 +1,6 @@
 name = "WaveFD"
 uuid = "44f9e87b-acd6-44e6-b5b0-e1db9a6b2dd4"
-version = "0.2.0"
+version = "0.3.0"
 
 [deps]
 CvxCompress = "3e489a4b-a92a-5e1b-a7bf-ed666eae205e"
@@ -17,7 +17,6 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 WaveFD_jll = "c8b78e2a-5255-5058-b631-96af8a7e9abf"
 
 [compat]
-julia = "1"
 CvxCompress = "1"
 DSP = "0.6"
 DistributedArrays = "0.6"
@@ -25,7 +24,8 @@ FFTW = "1"
 NearestNeighbors = "0.4"
 SpecialFunctions = "0.10"
 StaticArrays = "0.12"
-WaveFD_jll = "0.1"
+WaveFD_jll = "0.2"
+julia = "1"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

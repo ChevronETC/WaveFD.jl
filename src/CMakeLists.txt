@@ -17,17 +17,16 @@ add_library(prop3DAcoTTIDenQ_DEO2_FDTD prop3DAcoTTIDenQ_DEO2_FDTD.cc)
 add_library(illumination illumination.c)
 add_library(spacetime spacetime.cc)
 
-find_package(OpenMP)
-if(OpenMP_CXX_FOUND)
-    target_link_libraries(prop2DAcoIsoDenQ_DEO2_FDTD PUBLIC OpenMP::OpenMP_CXX)
-    target_link_libraries(prop2DAcoVTIDenQ_DEO2_FDTD PUBLIC OpenMP::OpenMP_CXX)
-    target_link_libraries(prop2DAcoTTIDenQ_DEO2_FDTD PUBLIC OpenMP::OpenMP_CXX)
-    target_link_libraries(prop3DAcoIsoDenQ_DEO2_FDTD PUBLIC OpenMP::OpenMP_CXX)
-    target_link_libraries(prop3DAcoVTIDenQ_DEO2_FDTD PUBLIC OpenMP::OpenMP_CXX)
-    target_link_libraries(prop3DAcoTTIDenQ_DEO2_FDTD PUBLIC OpenMP::OpenMP_CXX)
-    target_link_libraries(spacetime PUBLIC OpenMP::OpenMP_CXX)
-    target_link_libraries(illumination PUBLIC OpenMP::OpenMP_CXX)
-endif()
+find_package(PkgConfig REQUIRED)
+find_package(OpenMP REQUIRED)
+
+pkg_check_modules(FFTW3F REQUIRED IMPORTED_TARGET fftw3f)
+target_link_libraries(prop2DAcoIsoDenQ_DEO2_FDTD PUBLIC OpenMP::OpenMP_CXX PkgConfig::FFTW3F)
+target_link_libraries(prop2DAcoVTIDenQ_DEO2_FDTD PUBLIC OpenMP::OpenMP_CXX PkgConfig::FFTW3F)
+target_link_libraries(prop2DAcoTTIDenQ_DEO2_FDTD PUBLIC OpenMP::OpenMP_CXX PkgConfig::FFTW3F)
+target_link_libraries(prop3DAcoIsoDenQ_DEO2_FDTD PUBLIC OpenMP::OpenMP_CXX PkgConfig::FFTW3F)
+target_link_libraries(prop3DAcoVTIDenQ_DEO2_FDTD PUBLIC OpenMP::OpenMP_CXX PkgConfig::FFTW3F)
+target_link_libraries(prop3DAcoTTIDenQ_DEO2_FDTD PUBLIC OpenMP::OpenMP_CXX PkgConfig::FFTW3F)
 
 install(TARGETS prop2DAcoIsoDenQ_DEO2_FDTD prop2DAcoVTIDenQ_DEO2_FDTD prop2DAcoTTIDenQ_DEO2_FDTD prop3DAcoIsoDenQ_DEO2_FDTD prop3DAcoVTIDenQ_DEO2_FDTD prop3DAcoTTIDenQ_DEO2_FDTD illumination spacetime
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
