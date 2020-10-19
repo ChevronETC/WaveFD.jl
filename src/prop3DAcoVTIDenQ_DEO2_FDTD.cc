@@ -17,11 +17,10 @@ void *Prop3DAcoVTIDenQ_DEO2_FDTD_alloc(
         long nbx,
         long nby,
         long nbz) {
-
     bool freeSurface = (fs > 0) ? true : false;
 
     Prop3DAcoVTIDenQ_DEO2_FDTD *p = new Prop3DAcoVTIDenQ_DEO2_FDTD(
-            freeSurface, nthread, nx, ny, nz, nsponge, dx, dy, dz, dt, nbx, nby, nbz);
+        freeSurface, nthread, nx, ny, nz, nsponge, dx, dy, dz, dt, nbx, nby, nbz);
 
     return (void*) p;
 }
@@ -43,14 +42,14 @@ void Prop3DAcoVTIDenQ_DEO2_FDTD_SetupDtOmegaInvQ(void *p, float freqQ, float qMi
     setupDtOmegaInvQ_3D(fs, nx, ny, nz, nsponge, nthread, dt, freqQ, qMin, qInterior, pc->_dtOmegaInvQ);
 }
 
-void Prop3DAcoVTIDenQ_DEO2_FDTD_TimeStep(void *p) {
-    Prop3DAcoVTIDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop3DAcoVTIDenQ_DEO2_FDTD *>(p);
-    pc->timeStep();
-}
-
 void Prop3DAcoVTIDenQ_DEO2_FDTD_TimeStepLinear(void *p) {
     Prop3DAcoVTIDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop3DAcoVTIDenQ_DEO2_FDTD *>(p);
     pc->timeStepLinear();
+}
+
+void Prop3DAcoVTIDenQ_DEO2_FDTD_TimeStep(void *p) {
+    Prop3DAcoVTIDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop3DAcoVTIDenQ_DEO2_FDTD *>(p);
+    pc->timeStep();
 }
 
 void Prop3DAcoVTIDenQ_DEO2_FDTD_ScaleSpatialDerivatives(void *p) {
@@ -58,32 +57,36 @@ void Prop3DAcoVTIDenQ_DEO2_FDTD_ScaleSpatialDerivatives(void *p) {
     pc->scaleSpatialDerivatives();
 }
 
-void Prop3DAcoVTIDenQ_DEO2_FDTD_ForwardBornInjection_VEA(void *p,
-        float *dmodelV, float *dmodelE, float *dmodelA,
+void Prop3DAcoVTIDenQ_DEO2_FDTD_ForwardBornInjection_V(
+        void *p, float *dVel, float *wavefieldDP, float *wavefieldDM) {
+    Prop3DAcoVTIDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop3DAcoVTIDenQ_DEO2_FDTD *>(p);
+    pc->forwardBornInjection_V(dVel, wavefieldDP, wavefieldDM);
+}
+
+void Prop3DAcoVTIDenQ_DEO2_FDTD_ForwardBornInjection_VEA(
+        void *p, float *dVel, float *dEps, float *dEta,
         float *wavefieldP, float *wavefieldM, float *wavefieldDP, float *wavefieldDM) {
     Prop3DAcoVTIDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop3DAcoVTIDenQ_DEO2_FDTD *>(p);
-    pc->forwardBornInjection_VEA(dmodelV, dmodelE, dmodelA, wavefieldP, wavefieldM, wavefieldDP, wavefieldDM);
+    pc->forwardBornInjection_VEA(dVel, dEps, dEta, wavefieldP, wavefieldM, wavefieldDP, wavefieldDM);
 }
 
-void Prop3DAcoVTIDenQ_DEO2_FDTD_ForwardBornInjection_V(void *p,
-        float *dmodelV,
-        float *wavefieldDP, float *wavefieldDM) {
+void Prop3DAcoVTIDenQ_DEO2_FDTD_AdjointBornAccumulation_V(
+        void *p, float *dVel, float *wavefieldDP, float *wavefieldDM) {
     Prop3DAcoVTIDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop3DAcoVTIDenQ_DEO2_FDTD *>(p);
-    pc->forwardBornInjection_V(dmodelV, wavefieldDP, wavefieldDM);
+    pc->adjointBornAccumulation_V(dVel, wavefieldDP, wavefieldDM);
 }
 
-void Prop3DAcoVTIDenQ_DEO2_FDTD_AdjointBornAccumulation_VEA(void *p,
-        float *dmodelV, float *dmodelE, float *dmodelA,
+void Prop3DAcoVTIDenQ_DEO2_FDTD_AdjointBornAccumulation_wavefieldsep_V(
+        void *p, float *dVel, float *wavefieldDP, float *wavefieldDM, const long isFWI) {
+    Prop3DAcoVTIDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop3DAcoVTIDenQ_DEO2_FDTD *>(p);
+    pc->adjointBornAccumulation_wavefieldsep_V(dVel, wavefieldDP, wavefieldDM, isFWI);
+}
+
+void Prop3DAcoVTIDenQ_DEO2_FDTD_AdjointBornAccumulation_VEA(
+        void *p, float *dVel, float *dEps, float *dEta,
         float *wavefieldP, float *wavefieldM, float *wavefieldDP, float *wavefieldDM) {
     Prop3DAcoVTIDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop3DAcoVTIDenQ_DEO2_FDTD *>(p);
-    pc->adjointBornAccumulation_VEA(dmodelV, dmodelE, dmodelA, wavefieldP, wavefieldM, wavefieldDP, wavefieldDM);
-}
-
-void Prop3DAcoVTIDenQ_DEO2_FDTD_AdjointBornAccumulation_V(void *p,
-        float *dmodelV,
-        float *wavefieldDP, float *wavefieldDM) {
-    Prop3DAcoVTIDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop3DAcoVTIDenQ_DEO2_FDTD *>(p);
-    pc->adjointBornAccumulation_V(dmodelV, wavefieldDP, wavefieldDM);
+    pc->adjointBornAccumulation_VEA(dVel, dEps, dEta, wavefieldP, wavefieldM, wavefieldDP, wavefieldDM);
 }
 
 long Prop3DAcoVTIDenQ_DEO2_FDTD_getNx(void *p) {

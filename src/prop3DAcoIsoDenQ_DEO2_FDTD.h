@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include <fftw3.h>
+#include <complex>
 
 #define MIN(x,y) ((x)<(y)?(x):(y))
 
@@ -336,6 +338,112 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
                 }
             }
         }
+    }
+
+    /**
+     * Apply Kz wavenumber filter for up/down wavefield seperation
+     * Faqi, 2011, Geophysics https://library.seg.org/doi/full/10.1190/1.3533914
+     * 
+     * We handle the FWI and RTM imaging conditions with a condition inside the OMP loop
+     * 
+     * Example Kz filtering with 8 samples 
+     * frequency | +0 | +1 | +2 | +3 |  N | -3 | -2 | -1 |
+     * original  |  0 |  1 |  2 |  3 |  4 |  5 |  6 |  7 |
+     * upgoing   |  0 |  X |  X |  X |  4 |  5 |  6 |  7 |
+     * dngoing   |  0 |  1 |  2 |  3 |  4 |  X |  X |  X |
+     */
+#if defined(__FUNCTION_CLONES__)
+__attribute__((target_clones("avx","avx2","avx512f","default")))
+#endif
+    inline void adjointBornAccumulation_wavefieldsep(float *dmodel, float *wavefieldDP, const long isFWI) {
+        const long nfft = 2 * _nz;
+        const float scale = 1.0f / (float)(nfft);
+
+        // FWI: adj wavefield is dngoing
+        // RTM: adj wavefield is upgoing
+        const long kfft_adj = (isFWI) ? 0 : nfft / 2;
+
+        std::complex<float> * __restrict__ tmp = new std::complex<float>[nfft];
+
+        fftwf_plan planForward = fftwf_plan_dft_1d(nfft,
+		    reinterpret_cast<fftwf_complex*>(tmp),
+		    reinterpret_cast<fftwf_complex*>(tmp), +1, FFTW_ESTIMATE);
+
+		fftwf_plan planInverse = fftwf_plan_dft_1d(nfft,
+		    reinterpret_cast<fftwf_complex*>(tmp),
+		    reinterpret_cast<fftwf_complex*>(tmp), -1, FFTW_ESTIMATE);
+
+        delete [] tmp;
+
+#pragma omp parallel num_threads(_nthread)
+        {
+            std::complex<float> * __restrict__ tmp_nlf = new std::complex<float>[nfft];
+            std::complex<float> * __restrict__ tmp_adj = new std::complex<float>[nfft];
+
+#pragma omp for  collapse(2) schedule(static)
+            for (long bx = 0; bx < _nx; bx += _nbx) {
+                for (long by = 0; by < _ny; by += _nby) {
+                    const long kxmax = MIN(bx + _nbx, _nx);
+                    const long kymax = MIN(by + _nby, _ny);
+
+                    for (long kx = bx; kx < kxmax; kx++) {
+                        for (long ky = by; ky < kymax; ky++) {
+
+#pragma omp simd
+                            for (long kfft = 0; kfft < nfft; kfft++) {
+                                tmp_nlf[kfft] = 0;
+                                tmp_adj[kfft] = 0;
+                            }  
+
+#pragma omp simd
+                            for (long kz = 0; kz < _nz; kz++) {
+                                const long k = kx * _ny * _nz + ky * _nz + kz;
+                                tmp_nlf[kz] = scale * wavefieldDP[k];
+                                tmp_adj[kz] = scale * _pOld[k];
+                            }  
+
+                            fftwf_execute_dft(planForward,
+                                reinterpret_cast<fftwf_complex*>(tmp_nlf),
+                                reinterpret_cast<fftwf_complex*>(tmp_nlf));
+
+                            fftwf_execute_dft(planForward,
+                                reinterpret_cast<fftwf_complex*>(tmp_adj),
+                                reinterpret_cast<fftwf_complex*>(tmp_adj));
+
+                            // upgoing: zero the positive frequencies, excluding Nyquist
+                            // dngoing: zero the negative frequencies, excluding Nyquist
+#pragma omp simd
+                            for (long k = 1; k < nfft / 2; k++) {
+                                tmp_nlf[nfft / 2 + k] = 0;
+                                tmp_adj[kfft_adj + k] = 0;
+                            }
+
+                            fftwf_execute_dft(planInverse,
+                                reinterpret_cast<fftwf_complex*>(tmp_nlf),
+                                reinterpret_cast<fftwf_complex*>(tmp_nlf));
+
+                            fftwf_execute_dft(planInverse,
+                                reinterpret_cast<fftwf_complex*>(tmp_adj),
+                                reinterpret_cast<fftwf_complex*>(tmp_adj));
+
+                            // Faqi eq 10
+                            // Applied to FWI: [Sup * Rdn]
+                            // Applied to RTM: [Sup * Rup]
+                            for (long kz = 0; kz < _nz; kz++) {
+                                const long k = kx * _ny * _nz + ky * _nz + kz;
+                                const float V = _v[k];
+                                const float B = _b[k];
+                                const float factor = 2 * B / (V * V * V);
+                                dmodel[k] += factor * real(tmp_nlf[kz] * tmp_adj[kz]);
+                            }
+                        } // end loop over ky
+                    } // end loop over kx
+                } // end loop over by
+            } // end loop over bx
+            
+            delete [] tmp_nlf;
+            delete [] tmp_adj;
+        } // end parallel region
     }
 
     template<class Type>

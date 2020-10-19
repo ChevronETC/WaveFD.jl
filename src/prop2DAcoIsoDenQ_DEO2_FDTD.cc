@@ -14,11 +14,10 @@ void *Prop2DAcoIsoDenQ_DEO2_FDTD_alloc(
         float dt,
         long nbx,
         long nbz) {
-
     bool freeSurface = (fs > 0) ? true : false;
 
     Prop2DAcoIsoDenQ_DEO2_FDTD *p = new Prop2DAcoIsoDenQ_DEO2_FDTD(
-            freeSurface, nthread, nx, nz, nsponge, dx, dz, dt, nbx, nbz);
+        freeSurface, nthread, nx, nz, nsponge, dx, dz, dt, nbx, nbz);
 
     return (void*) p;
 }
@@ -49,14 +48,22 @@ void Prop2DAcoIsoDenQ_DEO2_FDTD_ScaleSpatialDerivatives(void *p) {
     pc->scaleSpatialDerivatives();
 }
 
-void Prop2DAcoIsoDenQ_DEO2_FDTD_ForwardBornInjection(void *p,float *dmodelV, float *wavefieldDP) {
+void Prop2DAcoIsoDenQ_DEO2_FDTD_ForwardBornInjection(
+        void *p, float *dVel, float *wavefieldDP) {
     Prop2DAcoIsoDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop2DAcoIsoDenQ_DEO2_FDTD *>(p);
-    pc->forwardBornInjection(dmodelV, wavefieldDP);
+    pc->forwardBornInjection(dVel, wavefieldDP);
 }
 
-void Prop2DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation(void *p,float *dmodelV, float *wavefieldDP) {
+void Prop2DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation(
+        void *p, float *dVel, float *wavefieldDP) {
     Prop2DAcoIsoDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop2DAcoIsoDenQ_DEO2_FDTD *>(p);
-    pc->adjointBornAccumulation(dmodelV, wavefieldDP);
+    pc->adjointBornAccumulation(dVel, wavefieldDP);
+}
+
+void Prop2DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_wavefieldsep(
+        void *p, float *dVel, float *wavefieldDP, const long isFWI) {
+    Prop2DAcoIsoDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop2DAcoIsoDenQ_DEO2_FDTD *>(p);
+    pc->adjointBornAccumulation_wavefieldsep(dVel, wavefieldDP, isFWI);
 }
 
 long Prop2DAcoIsoDenQ_DEO2_FDTD_getNx(void *p) {
@@ -97,16 +104,6 @@ float * Prop2DAcoIsoDenQ_DEO2_FDTD_getPCur(void *p) {
 float * Prop2DAcoIsoDenQ_DEO2_FDTD_getPOld(void *p) {
     Prop2DAcoIsoDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop2DAcoIsoDenQ_DEO2_FDTD *>(p);
     return pc->_pOld;
-}
-
-float * Prop2DAcoIsoDenQ_DEO2_FDTD_getTmpPx(void *p) {
-    Prop2DAcoIsoDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop2DAcoIsoDenQ_DEO2_FDTD *>(p);
-    return pc->_tmpPx1;
-}
-
-float * Prop2DAcoIsoDenQ_DEO2_FDTD_getTmpPz(void *p) {
-    Prop2DAcoIsoDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop2DAcoIsoDenQ_DEO2_FDTD *>(p);
-    return pc->_tmpPz1;
 }
 
 }

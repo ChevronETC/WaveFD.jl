@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include <fftw3.h>
+#include <complex>
 
 #define MIN(x,y) ((x)<(y)?(x):(y))
 
@@ -40,32 +42,32 @@ public:
     float * _mCur = NULL;
 
     Prop2DAcoVTIDenQ_DEO2_FDTD(
-            bool freeSurface,
-            long nthread,
-            long nx,
-            long nz,
-            long nsponge,
-            float dx,
-            float dz,
-            float dt,
-            const long nbx,
-            const long nbz) :
-                _freeSurface(freeSurface),
-                _nthread(nthread),
-                _nx(nx),
-                _nz(nz),
-                _nsponge(nsponge),
-                _nbx(nbx),
-                _nbz(nbz),
-                _dx(dx),
-                _dz(dz),
-                _dt(dt),
-                _c8_1(+1225.0 / 1024.0),
-                _c8_2(-245.0 / 3072.0),
-                _c8_3(+49.0 / 5120.0),
-                _c8_4(-5.0 / 7168.0),
-                _invDx(1.0 / _dx),
-                _invDz(1.0 / _dz) {
+        bool freeSurface,
+        long nthread,
+        long nx,
+        long nz,
+        long nsponge,
+        float dx,
+        float dz,
+        float dt,
+        const long nbx,
+        const long nbz) :
+            _freeSurface(freeSurface),
+            _nthread(nthread),
+            _nx(nx),
+            _nz(nz),
+            _nsponge(nsponge),
+            _nbx(nbx),
+            _nbz(nbz),
+            _dx(dx),
+            _dz(dz),
+            _dt(dt),
+            _c8_1(+1225.0 / 1024.0),
+            _c8_2(-245.0 / 3072.0),
+            _c8_3(+49.0 / 5120.0),
+            _c8_4(-5.0 / 7168.0),
+            _invDx(1.0 / _dx),
+            _invDz(1.0 / _dz) {
 
         // Allocate arrays
         _v           = new float[_nx * _nz];
@@ -90,9 +92,10 @@ public:
         _mCur        = new float[_nx * _nz];
 
         numaFirstTouch(_nx, _nz, _nthread, _v, _eps, _eta, _b,
-            _f, _dtOmegaInvQ, _pSpace, _mSpace, _tmpPx1,
-            _tmpPz1, _tmpMx1, _tmpMz1, _tmpPx2, _tmpPz2,
-            _tmpMx2, _tmpMz2, _pOld, _pCur, _mOld, _mCur, _nbx, _nbz);
+            _f, _dtOmegaInvQ, _pSpace, _mSpace, 
+            _tmpPx1, _tmpPz1, _tmpMx1, _tmpMz1,
+            _tmpPx2, _tmpPz2, _tmpMx2, _tmpMz2, 
+            _pOld, _pCur, _mOld, _mCur, _nbx, _nbz);
     }
 
 #if defined(__FUNCTION_CLONES__)
@@ -170,8 +173,8 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
 #pragma omp simd
             for (long kx = 0; kx < nx; kx++) {
                 const long k = kx * _nz + kz;
-                v[k] = eps[k] = eta[k] = b[k] = f[k] = dtOmegaInvQ[k] = pSpace[k] = mSpace[k] =
-                    tmpPx1[k] = tmpPz1[k] = tmpMx1[k] = tmpMz1[k] = tmpPx2[k] = tmpPz2[k] =
+                v[k] = eps[k] = eta[k] = b[k] = f[k] = dtOmegaInvQ[k] = pSpace[k] = 
+                    mSpace[k] = tmpPx1[k] = tmpPz1[k] = tmpMx1[k] = tmpMz1[k] = tmpPx2[k] = tmpPz2[k] =
                     tmpMx2[k] = tmpMz2[k] = pOld[k] = pCur[k] = mOld[k] = mCur[k] = 0;
             }
         }
@@ -180,8 +183,8 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
 #pragma omp simd
             for (long kx = 0; kx < nx; kx++) {
                 const long k = kx * _nz + kz;
-                v[k] = eps[k] = eta[k] = b[k] = f[k] = dtOmegaInvQ[k] = pSpace[k] = mSpace[k] =
-                    tmpPx1[k] = tmpPz1[k] = tmpMx1[k] = tmpMz1[k] = tmpPx2[k] = tmpPz2[k] =
+                v[k] = eps[k] = eta[k] = b[k] = f[k] = dtOmegaInvQ[k] = pSpace[k] = 
+                    mSpace[k] = tmpPx1[k] = tmpPz1[k] = tmpMx1[k] = tmpMz1[k] = tmpPx2[k] = tmpPz2[k] =
                     tmpMx2[k] = tmpMz2[k] = pOld[k] = pCur[k] = mOld[k] = mCur[k] = 0;
             }
         }
@@ -191,8 +194,8 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
 #pragma omp simd
             for (long kz = 0; kz < nz; kz++) {
                 const long k = kx * _nz + kz;
-                v[k] = eps[k] = eta[k] = b[k] = f[k] = dtOmegaInvQ[k] = pSpace[k] = mSpace[k] =
-                    tmpPx1[k] = tmpPz1[k] = tmpMx1[k] = tmpMz1[k] = tmpPx2[k] = tmpPz2[k] =
+                v[k] = eps[k] = eta[k] = b[k] = f[k] = dtOmegaInvQ[k] = pSpace[k] = 
+                    mSpace[k] = tmpPx1[k] = tmpPz1[k] = tmpMx1[k] = tmpMz1[k] = tmpPx2[k] = tmpPz2[k] =
                     tmpMx2[k] = tmpMz2[k] = pOld[k] = pCur[k] = mOld[k] = mCur[k] = 0;
             }
         }
@@ -201,8 +204,8 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
 #pragma omp simd
             for (long kz = 0; kz < nz; kz++) {
                 const long k = kx * _nz + kz;
-                v[k] = eps[k] = eta[k] = b[k] = f[k] = dtOmegaInvQ[k] = pSpace[k] = mSpace[k] =
-                    tmpPx1[k] = tmpPz1[k] = tmpMx1[k] = tmpMz1[k] = tmpPx2[k] = tmpPz2[k] =
+                v[k] = eps[k] = eta[k] = b[k] = f[k] = dtOmegaInvQ[k] = pSpace[k] = 
+                    mSpace[k] = tmpPx1[k] = tmpPz1[k] = tmpMx1[k] = tmpMz1[k] = tmpPx2[k] = tmpPz2[k] =
                     tmpMx2[k] = tmpMz2[k] = pOld[k] = pCur[k] = mOld[k] = mCur[k] = 0;
             }
         }
@@ -267,7 +270,7 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
                 _tmpPx1, _tmpPz1, _tmpMx1, _tmpMz1, _v, _b, _dtOmegaInvQ, _pCur, _mCur,
                 _pSpace, _mSpace, _pOld, _mOld, _nbx, _nbz);
 
-        // swap pointers to be consistent with mjolnir kernel
+        // swap pointers 
         float *pswap = _pOld;
         _pOld = _pCur;
         _pCur = pswap;
@@ -296,7 +299,7 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
                 _freeSurface, _nx, _nz, _nthread, _c8_1, _c8_2, _c8_3, _c8_4, _invDx, _invDz, _dt,
                 _tmpPx1, _tmpPz1, _tmpMx1, _tmpMz1, _v, _b, _dtOmegaInvQ, _pCur, _mCur, _pOld, _mOld, _nbx, _nbz);
 
-        // swap pointers to be consistent with mjolnir kernel
+        // swap pointers
         float *pswap = _pOld;
         _pOld = _pCur;
         _pCur = pswap;
@@ -335,8 +338,6 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
     /**
      * Add the Born source at the current time
      *
-     * Note: "dmodel" is the three components of the model consecutively [vel,eps,eta]
-     *
      * User must have:
      *   - called the nonlinear forward
      *   - saved 2nd time derivative of pressure at corresponding time index in array dp2
@@ -345,9 +346,7 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
 #if defined(__FUNCTION_CLONES__)
 __attribute__((target_clones("avx","avx2","avx512f","default")))
 #endif
-     inline void forwardBornInjection_V(
-            float *dV,
-            float *wavefieldDP, float *wavefieldDM) {
+     inline void forwardBornInjection_V(float *dVel, float *wavefieldDP, float *wavefieldDM) {
 #pragma omp parallel for collapse(2) num_threads(_nthread) schedule(static)
         for (long bx = 0; bx < _nx; bx += _nbx) {
             for (long bz = 0; bz < _nz; bz += _nbz) {
@@ -361,12 +360,12 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
 
                         const float V  = _v[k];
                         const float B  = _b[k];
-                        const float _dV = dV[k];
+                        const float dV = dVel[k];
 
                         // V^2/b factor to "clear" the b/V^2 factor on L_tP and L_tM
                         // _dt^2 factor is from the finite difference approximation
                         // 2B_dV/V^3 factor is from the linearization
-                        const float factor = 2 * _dt * _dt * _dV / V;
+                        const float factor = 2 * _dt * _dt * dV / V;
 
                         _pCur[k] += factor * wavefieldDP[k];
                         _mCur[k] += factor * wavefieldDM[k];
@@ -379,8 +378,7 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
 #if defined(__FUNCTION_CLONES__)
 __attribute__((target_clones("avx","avx2","avx512f","default")))
 #endif
-    inline void forwardBornInjection_VEA(
-            float *dV, float *dE, float *dA, /* vel, epsilon, eta */
+    inline void forwardBornInjection_VEA(float *dVel, float *dEps, float *dEta,
             float *wavefieldP, float *wavefieldM, float *wavefieldDP, float *wavefieldDM) {
 
         // Right side spatial derivatives for the Born source
@@ -403,26 +401,23 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
                 for (long kx = bx; kx < kxmax; kx++) {
 #pragma omp simd
                     for (long kz = bz; kz < kzmax; kz++) {
-
                         const long k = kx * _nz + kz;
 
                         const float V  = _v[k];
                         const float E  = _eps[k];
                         const float A  = _eta[k];
                         const float B  = _b[k];
-
-                        const float _dA = dA[k];
-                        const float _dE = dE[k];
-
                         const float F  = _f[k];
+                        const float dE = dEps[k];
+                        const float dA = dEta[k];
 
-                        _tmpPx2[k] = (+2 * B * _dE) *_tmpPx1[k];
-                        _tmpPz2[k] = (-2 * B * F * A * _dA) *_tmpPz1[k] +
-                                (_dA * B * F * (1 - 2 * A * A) / sqrt(1 - A * A)) * _tmpMz1[k];
+                        _tmpPx2[k] = (+2 * B * dE) *_tmpPx1[k];
+                        _tmpPz2[k] = (-2 * B * F * A * dA) *_tmpPz1[k] +
+                                (dA * B * F * (1 - 2 * A * A) / sqrt(1 - A * A)) * _tmpMz1[k];
 
                         _tmpMx2[k] = 0;
-                        _tmpMz2[k] = (+2 * B * F * A * _dA) *_tmpMz1[k] +
-                                (_dA * B * F * (1 - 2 * A * A) / sqrt(1 - A * A)) * _tmpPz1[k];
+                        _tmpMz2[k] = (+2 * B * F * A * dA) *_tmpMz1[k] +
+                                (dA * B * F * (1 - 2 * A * A) / sqrt(1 - A * A)) * _tmpPz1[k];
                     }
                 }
             }
@@ -448,14 +443,11 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
 #pragma omp simd
                     for (long kz = bz; kz < kzmax; kz++) {
                         const long k = kx * _nz + kz;
-
                         const float V  = _v[k];
                         const float B  = _b[k];
-                        const float _dV = dV[k];
-
+                        const float dV = dVel[k];
                         const float dt2v2OverB = _dt * _dt * V * V / B;
-
-                        const float factor = 2 * B * _dV / (V * V * V);
+                        const float factor = 2 * B * dV / (V * V * V);
 
                         _pCur[k] += dt2v2OverB * (factor * wavefieldDP[k] + _tmpPx1[k] + _tmpPz1[k]);
                         _mCur[k] += dt2v2OverB * (factor * wavefieldDM[k] + _tmpMx1[k] + _tmpMz1[k]);
@@ -476,8 +468,7 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
 #if defined(__FUNCTION_CLONES__)
 __attribute__((target_clones("avx","avx2","avx512f","default")))
 #endif
-     inline void adjointBornAccumulation_V(float *dV,
-             float *wavefieldDP, float *wavefieldDM) {
+     inline void adjointBornAccumulation_V(float *dVel, float *wavefieldDP, float *wavefieldDM) {
  #pragma omp parallel for collapse(2) num_threads(_nthread) schedule(static)
          for (long bx = 0; bx < _nx; bx += _nbx) {
              for (long bz = 0; bz < _nz; bz += _nbz) {
@@ -488,23 +479,152 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
  #pragma omp simd
                      for (long kz = bz; kz < kzmax; kz++) {
                          const long k = kx * _nz + kz;
-
                          const float V = _v[k];
                          const float B = _b[k];
-
                          const float factor = 2 * B / (V * V * V);
-
-                         dV[k] += factor * (wavefieldDP[k] * _pOld[k] + wavefieldDM[k] * _mOld[k]);
+                         dVel[k] += factor * (wavefieldDP[k] * _pOld[k] + wavefieldDM[k] * _mOld[k]);
                      }
                  }
              }
          }
      }
 
+    /**
+     * Apply Kz wavenumber filter for up/down wavefield seperation
+     * Faqi, 2011, Geophysics https://library.seg.org/doi/full/10.1190/1.3533914
+     * 
+     * We handle the FWI and RTM imaging conditions with a condition inside the OMP loop
+     * 
+     * Example Kz filtering with 8 samples 
+     * frequency | +0 | +1 | +2 | +3 |  N | -3 | -2 | -1 |
+     * original  |  0 |  1 |  2 |  3 |  4 |  5 |  6 |  7 |
+     * upgoing   |  0 |  X |  X |  X |  4 |  5 |  6 |  7 |
+     * dngoing   |  0 |  1 |  2 |  3 |  4 |  X |  X |  X |
+     */
 #if defined(__FUNCTION_CLONES__)
 __attribute__((target_clones("avx","avx2","avx512f","default")))
 #endif
-    inline void adjointBornAccumulation_VEA(float *dV, float *dE, float *dA, /* vel, epsilon, eta */
+     inline void adjointBornAccumulation_wavefieldsep_V(float *dVel, 
+            float *wavefieldDP, float *wavefieldDM, const long isFWI) {
+        const long nfft = 2 * _nz;
+        const float scale = 1.0f / (float)(nfft);
+
+        // FWI: adj wavefield is dngoing
+        // RTM: adj wavefield is upgoing
+        const long kfft_adj = (isFWI) ? 0 : nfft / 2;
+
+        std::complex<float> * __restrict__ tmp = new std::complex<float>[nfft];
+
+        fftwf_plan planForward = fftwf_plan_dft_1d(nfft,
+		    reinterpret_cast<fftwf_complex*>(tmp),
+		    reinterpret_cast<fftwf_complex*>(tmp), +1, FFTW_ESTIMATE);
+
+		fftwf_plan planInverse = fftwf_plan_dft_1d(nfft,
+		    reinterpret_cast<fftwf_complex*>(tmp),
+		    reinterpret_cast<fftwf_complex*>(tmp), -1, FFTW_ESTIMATE);
+
+        delete [] tmp;
+
+#pragma omp parallel num_threads(_nthread)
+        {
+            std::complex<float> * __restrict__ tmp_nlf_p = new std::complex<float>[nfft];
+            std::complex<float> * __restrict__ tmp_adj_p = new std::complex<float>[nfft];
+            std::complex<float> * __restrict__ tmp_nlf_m = new std::complex<float>[nfft];
+            std::complex<float> * __restrict__ tmp_adj_m = new std::complex<float>[nfft];
+
+#pragma omp for schedule(static)
+            for (long bx = 0; bx < _nx; bx += _nbx) {
+                const long kxmax = MIN(bx + _nbx, _nx);
+                for (long kx = bx; kx < kxmax; kx++) {
+
+#pragma omp simd
+                    for (long kfft = 0; kfft < nfft; kfft++) {
+                        tmp_nlf_p[kfft] = 0;
+                        tmp_adj_p[kfft] = 0;
+                        tmp_nlf_m[kfft] = 0;
+                        tmp_adj_m[kfft] = 0;
+                    }  
+
+#pragma omp simd
+                    for (long kz = 0; kz < _nz; kz++) {
+                        const long k = kx * _nz + kz;
+                        tmp_nlf_p[kz] = scale * wavefieldDP[k];
+                        tmp_adj_p[kz] = scale * _pOld[k];
+                        tmp_nlf_m[kz] = scale * wavefieldDM[k];
+                        tmp_adj_m[kz] = scale * _mOld[k];
+                    }  
+
+                    fftwf_execute_dft(planForward,
+                        reinterpret_cast<fftwf_complex*>(tmp_nlf_p),
+                        reinterpret_cast<fftwf_complex*>(tmp_nlf_p));
+
+                    fftwf_execute_dft(planForward,
+                        reinterpret_cast<fftwf_complex*>(tmp_adj_p),
+                        reinterpret_cast<fftwf_complex*>(tmp_adj_p));
+
+                    fftwf_execute_dft(planForward,
+                        reinterpret_cast<fftwf_complex*>(tmp_nlf_m),
+                        reinterpret_cast<fftwf_complex*>(tmp_nlf_m));
+
+                    fftwf_execute_dft(planForward,
+                        reinterpret_cast<fftwf_complex*>(tmp_adj_m),
+                        reinterpret_cast<fftwf_complex*>(tmp_adj_m));
+
+                    // upgoing: zero the positive frequencies, excluding Nyquist
+                    // dngoing: zero the negative frequencies, excluding Nyquist
+#pragma omp simd
+                    for (long k = 1; k < nfft / 2; k++) {
+                        tmp_nlf_p[nfft / 2 + k] = 0;
+                        tmp_adj_p[kfft_adj + k] = 0;
+                        tmp_nlf_m[nfft / 2 + k] = 0;
+                        tmp_adj_m[kfft_adj + k] = 0;
+                    }
+
+                    fftwf_execute_dft(planInverse,
+                        reinterpret_cast<fftwf_complex*>(tmp_nlf_p),
+                        reinterpret_cast<fftwf_complex*>(tmp_nlf_p));
+
+                    fftwf_execute_dft(planInverse,
+                        reinterpret_cast<fftwf_complex*>(tmp_adj_p),
+                        reinterpret_cast<fftwf_complex*>(tmp_adj_p));
+
+                    fftwf_execute_dft(planInverse,
+                        reinterpret_cast<fftwf_complex*>(tmp_nlf_m),
+                        reinterpret_cast<fftwf_complex*>(tmp_nlf_m));
+
+                    fftwf_execute_dft(planInverse,
+                        reinterpret_cast<fftwf_complex*>(tmp_adj_m),
+                        reinterpret_cast<fftwf_complex*>(tmp_adj_m));
+
+                    // Faqi eq 10
+                    // Applied to FWI: [Sup * Rdn]
+                    // Applied to RTM: [Sup * Rup]
+#pragma omp simd
+                    for (long kz = 0; kz < _nz; kz++) {
+                        const long k = kx * _nz + kz;
+                        const float V = _v[k];
+                        const float B = _b[k];
+                        const float factor = 2 * B / (V * V * V);
+                        dVel[k] += factor * (real(tmp_nlf_p[kz] * tmp_adj_p[kz]) + real(tmp_nlf_m[kz] * tmp_adj_m[kz]));
+                    }
+
+                } // end loop over kx
+            } // end loop over bx
+
+            delete [] tmp_nlf_p;
+            delete [] tmp_adj_p;
+            delete [] tmp_nlf_m;
+            delete [] tmp_adj_m;
+        } // end parallel region
+
+        fftwf_destroy_plan(planForward);
+        fftwf_destroy_plan(planInverse);
+     }
+
+#if defined(__FUNCTION_CLONES__)
+__attribute__((target_clones("avx","avx2","avx512f","default")))
+#endif
+    inline void adjointBornAccumulation_VEA(float *dVel, float *dEps, float *dEta,
             float *wavefieldP, float *wavefieldM, float *wavefieldDP, float *wavefieldDM) {
 
         // Right side spatial derivatives for the adjoint accumulation
@@ -544,11 +664,11 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
 
                         const float factor = 2 * B / (V * V * V);
 
-                        dV[k] +=
+                        dVel[k] +=
                                 factor * wavefieldDP[k] * _pOld[k] +
                                 factor * wavefieldDM[k] * _mOld[k];
 
-                        dE[k] += -2 * B * _tmpPx1[k] * _tmpPx2[k];
+                        dEps[k] += -2 * B * _tmpPx1[k] * _tmpPx2[k];
 
                         const float partP =
                                 2 * B * F * A * _tmpPz1[k] - (B * F * (1 - 2 * A * A) / sqrt(1 - A * A)) * _tmpMz1[k];
@@ -556,7 +676,7 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
                         const float partM =
                                 2 * B * F * A * _tmpMz1[k] + (B * F * (1 - 2 * A * A) / sqrt(1 - A * A)) * _tmpPz1[k];
 
-                        dA[k] += partP * _tmpPz2[k] - partM * _tmpMz2[k];
+                        dEta[k] += partP * _tmpPz2[k] - partM * _tmpMz2[k];
                     }
                 }
             }
@@ -593,6 +713,9 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
             const long BX_2D,
             const long BZ_2D) {
 
+        const long nx4 = nx - 4;
+        const long nz4 = nz - 4;
+
         // zero output arrays
 #pragma omp parallel for collapse(2) num_threads(nthread) schedule(static)
         for (long bx = 0; bx < nx; bx += BX_2D) {
@@ -612,9 +735,6 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
                 }
             }
         }
-
-        const long nx4 = nx - 4;
-        const long nz4 = nz - 4;
 
         // interior
 #pragma omp parallel for collapse(2) num_threads(nthread) schedule(guided)
@@ -897,7 +1017,6 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
 
         const long nx4 = nx - 4;
         const long nz4 = nz - 4;
-
         const Type dt2 = dtMod * dtMod;
 
         // zero output arrays

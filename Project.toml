@@ -17,7 +17,6 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 WaveFD_jll = "c8b78e2a-5255-5058-b631-96af8a7e9abf"
 
 [compat]
-julia = "1"
 CvxCompress = "1"
 DSP = "0.6"
 DistributedArrays = "0.6"
@@ -26,6 +25,7 @@ NearestNeighbors = "0.4"
 SpecialFunctions = "0.10"
 StaticArrays = "0.12"
 WaveFD_jll = "0.1"
+julia = "1"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

@@ -7,7 +7,7 @@ function Prop3DAcoIsoDenQ_DEO2_FDTD(;
         ny=0,
         nx=0,
         nsponge=60,
-        nbz=256,
+        nbz=512,
         nby=8,
         nbx=8,
         dz=5.0,
@@ -28,6 +28,7 @@ function Prop3DAcoIsoDenQ_DEO2_FDTD(;
     @assert nsponge > 0
     @assert nthreads > 0
     @assert nbx > 0
+    @assert nby > 0
     @assert nbz > 0
 
     fs = freesurface ? 1 : 0
@@ -54,7 +55,7 @@ function size(prop::Prop3DAcoIsoDenQ_DEO2_FDTD)
     (nz,ny,nx)
 end
 
-for _f in (:V, :B, :PSpace, :PCur, :POld, :TmpPx1, :TmpPz1, :DtOmegaInvQ)
+for _f in (:V, :B, :PSpace, :PCur, :POld, :DtOmegaInvQ)
     symf = "Prop3DAcoIsoDenQ_DEO2_FDTD_get" * string(_f)
     @eval $(_f)(prop::Prop3DAcoIsoDenQ_DEO2_FDTD) = unsafe_wrap(Array, ccall(($symf, libprop3DAcoIsoDenQ_DEO2_FDTD), Ptr{Float32}, (Ptr{Cvoid},), prop.p), size(prop), own=false)
 end
@@ -67,14 +68,26 @@ scale_spatial_derivatives!(prop::Prop3DAcoIsoDenQ_DEO2_FDTD) =
 
 function forwardBornInjection!(prop::Prop3DAcoIsoDenQ_DEO2_FDTD,dmodelv,wavefieldp)
     ccall((:Prop3DAcoIsoDenQ_DEO2_FDTD_ForwardBornInjection, libprop3DAcoIsoDenQ_DEO2_FDTD), Cvoid,
-        (Ptr{Cvoid},Ptr{Cfloat},Ptr{Cfloat}),
-         prop.p,    dmodelv,    wavefieldp)
+        (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat}),
+         prop.p,     dmodelv,     wavefieldp)
 end
 
-function adjointBornAccumulation!(prop::Prop3DAcoIsoDenQ_DEO2_FDTD,dmodelv,wavefieldp)
+function adjointBornAccumulation!(prop::Prop3DAcoIsoDenQ_DEO2_FDTD,imagingcondition::ImagingConditionStandard,dmodelv,wavefieldp)
     ccall((:Prop3DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation, libprop3DAcoIsoDenQ_DEO2_FDTD), Cvoid,
-        (Ptr{Cvoid},Ptr{Cfloat},Ptr{Cfloat}),
-         prop.p,    dmodelv,    wavefieldp)
+        (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat}),
+         prop.p,     dmodelv,     wavefieldp)
+end
+
+function adjointBornAccumulation!(prop::Prop3DAcoIsoDenQ_DEO2_FDTD,imagingcondition::ImagingConditionWaveFieldSeparationFWI,dmodelv,wavefieldp)
+    ccall((:Prop3DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_wavefieldsep, libprop3DAcoIsoDenQ_DEO2_FDTD), Cvoid,
+        (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat}, Clong),
+         prop.p,     dmodelv,     wavefieldp,  1)
+end
+
+function adjointBornAccumulation!(prop::Prop3DAcoIsoDenQ_DEO2_FDTD,imagingcondition::ImagingConditionWaveFieldSeparationRTM,dmodelv,wavefieldp)
+    ccall((:Prop3DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_wavefieldsep, libprop3DAcoIsoDenQ_DEO2_FDTD), Cvoid,
+        (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat}, Clong),
+         prop.p,     dmodelv,     wavefieldp,  0)
 end
 
 function show(io::IO, prop::Prop3DAcoIsoDenQ_DEO2_FDTD)
