@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include <fftw3.h>
+#include <complex>
 
 #define MIN(x,y) ((x)<(y)?(x):(y))
 
@@ -27,32 +29,32 @@ public:
     float * _pCur = NULL;
 
     Prop2DAcoIsoDenQ_DEO2_FDTD(
-            bool freeSurface,
-            long nthread,
-            long nx,
-            long nz,
-            long nsponge,
-            float dx,
-            float dz,
-            float dt,
-            const long nbx,
-            const long nbz) :
-                _freeSurface(freeSurface),
-                _nthread(nthread),
-                _nx(nx),
-                _nz(nz),
-                _nsponge(nsponge),
-                _nbx(nbx),
-                _nbz(nbz),
-                _dx(dx),
-                _dz(dz),
-                _dt(dt),
-                _c8_1(+1225.0 / 1024.0),
-                _c8_2(-245.0 / 3072.0),
-                _c8_3(+49.0 / 5120.0),
-                _c8_4(-5.0 / 7168.0),
-                _invDx(1.0 / _dx),
-                _invDz(1.0 / _dz) {
+        bool freeSurface,
+        long nthread,
+        long nx,
+        long nz,
+        long nsponge,
+        float dx,
+        float dz,
+        float dt,
+        const long nbx,
+        const long nbz) :
+            _freeSurface(freeSurface),
+            _nthread(nthread),
+            _nx(nx),
+            _nz(nz),
+            _nsponge(nsponge),
+            _nbx(nbx),
+            _nbz(nbz),
+            _dx(dx),
+            _dz(dz),
+            _dt(dt),
+            _c8_1(+1225.0 / 1024.0),
+            _c8_2(-245.0 / 3072.0),
+            _c8_3(+49.0 / 5120.0),
+            _c8_4(-5.0 / 7168.0),
+            _invDx(1.0 / _dx),
+            _invDz(1.0 / _dz) {
 
         // Allocate arrays
         _v           = new float[_nx * _nz];
@@ -210,7 +212,7 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
 #if defined(__FUNCTION_CLONES__)
 __attribute__((target_clones("avx","avx2","avx512f","default")))
 #endif
-    inline void forwardBornInjection(float *dmodel, float *wavefieldDP) {
+    inline void forwardBornInjection(float *dVel, float *wavefieldDP) {
 #pragma omp parallel for collapse(2) num_threads(_nthread) schedule(static)
         for (long bx = 0; bx < _nx; bx += _nbx) {
             for (long bz = 0; bz < _nz; bz += _nbz) {
@@ -222,7 +224,7 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
                     for (long kz = bz; kz < kzmax; kz++) {
                         const long k = kx * _nz + kz;
                         const float V  = _v[k];
-                        const float dV = dmodel[k];
+                        const float dV = dVel[k];
                         _pCur[k] += (2 * pow(_dt, 2.0f) * dV * wavefieldDP[k]) / V;
                     }
                 }
@@ -241,7 +243,7 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
 #if defined(__FUNCTION_CLONES__)
 __attribute__((target_clones("avx","avx2","avx512f","default")))
 #endif
-    inline void adjointBornAccumulation(float *dmodel, float *wavefieldDP) {
+    inline void adjointBornAccumulation(float *dVel, float *wavefieldDP) {
 #pragma omp parallel for num_threads(_nthread) schedule(static)
         for (long bx = 0; bx < _nx; bx += _nbx) {
             for (long bz = 0; bz < _nz; bz += _nbz) {
@@ -254,11 +256,116 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
                         const long k = kx * _nz + kz;
                         const float V = _v[k];
                         const float B = _b[k];
-                        dmodel[k] += (2 * B * wavefieldDP[k] * _pOld[k]) / pow(V, 3.0f);
+                        dVel[k] += (2 * B * wavefieldDP[k] * _pOld[k]) / pow(V, 3.0f);
                     }
                 }
             }
         }
+    }
+
+    /**
+     * Apply Kz wavenumber filter for up/down wavefield seperation
+     * Faqi, 2011, Geophysics https://library.seg.org/doi/full/10.1190/1.3533914
+     * 
+     * We handle the FWI and RTM imaging conditions with a condition inside the OMP loop
+     * 
+     * Example Kz filtering with 8 samples 
+     * frequency | +0 | +1 | +2 | +3 |  N | -3 | -2 | -1 |
+     * original  |  0 |  1 |  2 |  3 |  4 |  5 |  6 |  7 |
+     * upgoing   |  0 |  X |  X |  X |  4 |  5 |  6 |  7 |
+     * dngoing   |  0 |  1 |  2 |  3 |  4 |  X |  X |  X |
+     */
+#if defined(__FUNCTION_CLONES__)
+__attribute__((target_clones("avx","avx2","avx512f","default")))
+#endif
+    inline void adjointBornAccumulation_wavefieldsep(float *dVel, float *wavefieldDP, const long isFWI) {
+        const long nfft = 2 * _nz;
+        const float scale = 1.0f / (float)(nfft);
+
+        // FWI: adj wavefield is dngoing
+        // RTM: adj wavefield is upgoing
+        const long kfft_adj = (isFWI) ? 0 : nfft / 2;
+
+        std::complex<float> * __restrict__ tmp = new std::complex<float>[nfft];
+
+        fftwf_plan planForward = fftwf_plan_dft_1d(nfft,
+		    reinterpret_cast<fftwf_complex*>(tmp),
+		    reinterpret_cast<fftwf_complex*>(tmp), +1, FFTW_ESTIMATE);
+
+		fftwf_plan planInverse = fftwf_plan_dft_1d(nfft,
+		    reinterpret_cast<fftwf_complex*>(tmp),
+		    reinterpret_cast<fftwf_complex*>(tmp), -1, FFTW_ESTIMATE);
+
+        delete [] tmp;
+
+#pragma omp parallel num_threads(_nthread)
+        {
+            std::complex<float> * __restrict__ tmp_nlf = new std::complex<float>[nfft];
+            std::complex<float> * __restrict__ tmp_adj = new std::complex<float>[nfft];
+
+#pragma omp for schedule(static)
+            for (long bx = 0; bx < _nx; bx += _nbx) {
+                const long kxmax = MIN(bx + _nbx, _nx);
+                for (long kx = bx; kx < kxmax; kx++) {
+
+#pragma omp simd
+                    for (long kfft = 0; kfft < nfft; kfft++) {
+                        tmp_nlf[kfft] = 0;
+                        tmp_adj[kfft] = 0;
+                    }  
+
+#pragma omp simd
+                    for (long kz = 0; kz < _nz; kz++) {
+                        const long k = kx * _nz + kz;
+                        tmp_nlf[kz] = scale * wavefieldDP[k];
+                        tmp_adj[kz] = scale * _pOld[k];
+                    }  
+
+                    fftwf_execute_dft(planForward,
+                        reinterpret_cast<fftwf_complex*>(tmp_nlf),
+                        reinterpret_cast<fftwf_complex*>(tmp_nlf));
+
+                    fftwf_execute_dft(planForward,
+                        reinterpret_cast<fftwf_complex*>(tmp_adj),
+                        reinterpret_cast<fftwf_complex*>(tmp_adj));
+
+                    // upgoing: zero the positive frequencies, excluding Nyquist
+                    // dngoing: zero the negative frequencies, excluding Nyquist
+#pragma omp simd
+                    for (long k = 1; k < nfft / 2; k++) {
+                        tmp_nlf[nfft / 2 + k] = 0;
+                        tmp_adj[kfft_adj + k] = 0;
+                    }
+
+                    fftwf_execute_dft(planInverse,
+                        reinterpret_cast<fftwf_complex*>(tmp_nlf),
+                        reinterpret_cast<fftwf_complex*>(tmp_nlf));
+
+                    fftwf_execute_dft(planInverse,
+                        reinterpret_cast<fftwf_complex*>(tmp_adj),
+                        reinterpret_cast<fftwf_complex*>(tmp_adj));
+
+                    // Faqi eq 10
+                    // Applied to FWI: [Sup * Rdn]
+                    // Applied to RTM: [Sup * Rup]
+#pragma omp simd
+                    for (long kz = 0; kz < _nz; kz++) {
+                        const long k = kx * _nz + kz;
+                        const float V = _v[k];
+                        const float B = _b[k];
+                        const float factor = 2 * B / (V * V * V);
+                        dVel[k] += factor * real(tmp_nlf[kz] * tmp_adj[kz]);
+                    }
+
+                } // end loop over kx
+            } // end loop over bx
+
+            delete [] tmp_nlf;
+            delete [] tmp_adj;
+        } // end parallel region
+
+        fftwf_destroy_plan(planForward);
+        fftwf_destroy_plan(planInverse);
     }
 
 template<class Type>

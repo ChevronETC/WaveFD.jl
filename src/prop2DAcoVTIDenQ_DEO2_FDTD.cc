@@ -17,7 +17,7 @@ void *Prop2DAcoVTIDenQ_DEO2_FDTD_alloc(
     bool freeSurface = (fs > 0) ? true : false;
 
     Prop2DAcoVTIDenQ_DEO2_FDTD *p = new Prop2DAcoVTIDenQ_DEO2_FDTD(
-            freeSurface, nthread, nx, nz, nsponge, dx, dz, dt, nbx, nbz);
+        freeSurface, nthread, nx, nz, nsponge, dx, dz, dt, nbx, nbz);
 
     return (void*) p;
 }
@@ -38,47 +38,51 @@ void Prop2DAcoVTIDenQ_DEO2_FDTD_SetupDtOmegaInvQ(void *p, float freqQ, float qMi
     setupDtOmegaInvQ_2D(fs, nx, nz, nsponge, nthread, dt, freqQ, qMin, qInterior, pc->_dtOmegaInvQ);
 }
 
-void Prop2DAcoVTIDenQ_DEO2_FDTD_TimeStep(void *p) {
-    Prop2DAcoVTIDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop2DAcoVTIDenQ_DEO2_FDTD *>(p);
-    pc->timeStep();
-}
-
 void Prop2DAcoVTIDenQ_DEO2_FDTD_TimeStepLinear(void *p) {
     Prop2DAcoVTIDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop2DAcoVTIDenQ_DEO2_FDTD *>(p);
     pc->timeStepLinear();
 }
 
-void Prop2DAcoVTIDenQ_DEO2_FDTD_ForwardBornInjection_VEA(
-        void *p, float *dV, float *dE, float *dA,
-        float *wavefieldP, float *wavefieldM, float *wavefieldDP, float *wavefieldDM) {
+void Prop2DAcoVTIDenQ_DEO2_FDTD_TimeStep(void *p) {
     Prop2DAcoVTIDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop2DAcoVTIDenQ_DEO2_FDTD *>(p);
-    pc->forwardBornInjection_VEA(dV, dE, dA, wavefieldP, wavefieldM, wavefieldDP, wavefieldDM);
-}
-
-void Prop2DAcoVTIDenQ_DEO2_FDTD_AdjointBornAccumulation_VEA(
-        void *p, float *dV, float *dE, float *dA,
-        float *wavefieldP, float *wavefieldM, float *wavefieldDP, float *wavefieldDM) {
-    Prop2DAcoVTIDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop2DAcoVTIDenQ_DEO2_FDTD *>(p);
-    pc->adjointBornAccumulation_VEA(dV, dE, dA, wavefieldP, wavefieldM, wavefieldDP, wavefieldDM);
-}
-
-void Prop2DAcoVTIDenQ_DEO2_FDTD_ForwardBornInjection_V(
-        void *p, float *dV,
-        float *wavefieldDP, float *wavefieldDM) {
-    Prop2DAcoVTIDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop2DAcoVTIDenQ_DEO2_FDTD *>(p);
-    pc->forwardBornInjection_V(dV, wavefieldDP, wavefieldDM);
-}
-
-void Prop2DAcoVTIDenQ_DEO2_FDTD_AdjointBornAccumulation_V(
-        void *p, float *dV,
-        float *wavefieldDP, float *wavefieldDM) {
-    Prop2DAcoVTIDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop2DAcoVTIDenQ_DEO2_FDTD *>(p);
-    pc->adjointBornAccumulation_V(dV, wavefieldDP, wavefieldDM);
+    pc->timeStep();
 }
 
 void Prop2DAcoVTIDenQ_DEO2_FDTD_ScaleSpatialDerivatives(void *p) {
     Prop2DAcoVTIDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop2DAcoVTIDenQ_DEO2_FDTD *>(p);
     pc->scaleSpatialDerivatives();
+}
+
+void Prop2DAcoVTIDenQ_DEO2_FDTD_ForwardBornInjection_V(
+        void *p, float *dVel, float *wavefieldDP, float *wavefieldDM) {
+    Prop2DAcoVTIDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop2DAcoVTIDenQ_DEO2_FDTD *>(p);
+    pc->forwardBornInjection_V(dVel, wavefieldDP, wavefieldDM);
+}
+
+void Prop2DAcoVTIDenQ_DEO2_FDTD_ForwardBornInjection_VEA(
+        void *p, float *dVel, float *dEps, float *dEta,
+        float *wavefieldP, float *wavefieldM, float *wavefieldDP, float *wavefieldDM) {
+    Prop2DAcoVTIDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop2DAcoVTIDenQ_DEO2_FDTD *>(p);
+    pc->forwardBornInjection_VEA(dVel, dEps, dEta, wavefieldP, wavefieldM, wavefieldDP, wavefieldDM);
+}
+
+void Prop2DAcoVTIDenQ_DEO2_FDTD_AdjointBornAccumulation_V(
+        void *p, float *dVel, float *wavefieldDP, float *wavefieldDM) {
+    Prop2DAcoVTIDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop2DAcoVTIDenQ_DEO2_FDTD *>(p);
+    pc->adjointBornAccumulation_V(dVel, wavefieldDP, wavefieldDM);
+}
+
+void Prop2DAcoVTIDenQ_DEO2_FDTD_AdjointBornAccumulation_wavefieldsep_V(
+        void *p, float *dVel, float *wavefieldDP, float *wavefieldDM, const long isFWI) {
+    Prop2DAcoVTIDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop2DAcoVTIDenQ_DEO2_FDTD *>(p);
+    pc->adjointBornAccumulation_wavefieldsep_V(dVel, wavefieldDP, wavefieldDM, isFWI);
+}
+
+void Prop2DAcoVTIDenQ_DEO2_FDTD_AdjointBornAccumulation_VEA(
+        void *p, float *dVel, float *dEps, float *dEta,
+        float *wavefieldP, float *wavefieldM, float *wavefieldDP, float *wavefieldDM) {
+    Prop2DAcoVTIDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop2DAcoVTIDenQ_DEO2_FDTD *>(p);
+    pc->adjointBornAccumulation_VEA(dVel, dEps, dEta, wavefieldP, wavefieldM, wavefieldDP, wavefieldDM);
 }
 
 long Prop2DAcoVTIDenQ_DEO2_FDTD_getNx(void *p) {
@@ -149,26 +153,6 @@ float * Prop2DAcoVTIDenQ_DEO2_FDTD_getMCur(void *p) {
 float * Prop2DAcoVTIDenQ_DEO2_FDTD_getMOld(void *p) {
     Prop2DAcoVTIDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop2DAcoVTIDenQ_DEO2_FDTD *>(p);
     return pc->_mOld;
-}
-
-float * Prop2DAcoVTIDenQ_DEO2_FDTD_getTmpPx1(void *p) {
-    Prop2DAcoVTIDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop2DAcoVTIDenQ_DEO2_FDTD *>(p);
-    return pc->_tmpPx1;
-}
-
-float * Prop2DAcoVTIDenQ_DEO2_FDTD_getTmpPz1(void *p) {
-    Prop2DAcoVTIDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop2DAcoVTIDenQ_DEO2_FDTD *>(p);
-    return pc->_tmpPz1;
-}
-
-float * Prop2DAcoVTIDenQ_DEO2_FDTD_getTmpMx1(void *p) {
-    Prop2DAcoVTIDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop2DAcoVTIDenQ_DEO2_FDTD *>(p);
-    return pc->_tmpMx1;
-}
-
-float * Prop2DAcoVTIDenQ_DEO2_FDTD_getTmpMz1(void *p) {
-    Prop2DAcoVTIDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop2DAcoVTIDenQ_DEO2_FDTD *>(p);
-    return pc->_tmpMz1;
 }
 
 }
