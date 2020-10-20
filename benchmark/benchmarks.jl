@@ -118,8 +118,8 @@ SUITE["3D Utils"] = BenchmarkGroup()
 SUITE["3D Utils"]["source_blocking"] = @benchmarkable WaveFD.source_blocking($nz, $ny, $nx, 256, 8, 8, $iz, $iy, $ix, $c);
 SUITE["3D Utils"]["injectdata!"] = @benchmarkable WaveFD.injectdata!($field, $blocks, $data, $it)
 
-compressor = WaveFD.Compressor(Float32, Float32, UInt32, (nz,ny,nx), (32,32,32), 1e-2, 1024, false)
-field3 = rand(Float32,nz,ny,nx)
+compressor = WaveFD.Compressor(Float32, Float32, UInt32, (n_3D.z,n_3D.y,n_3D.x), (32,32,32), 1e-2, 1024, false)
+field3 = rand(Float32,n_3D.z,n_3D.y,n_3D.x)
 SUITE["3D compression"] = BenchmarkGroup()
 SUITE["3D compression"]["write"] = @benchmarkable WaveFD.compressedwrite(io, $compressor, 1, $field3) setup=(open($compressor); io=open(tempname(), "w")) teardown=(close($compressor); close(io))
 SUITE["3D compression"]["read"] = @benchmarkable WaveFD.compressedread!(io, $compressor, 1, $field3) setup=(open($compressor); tfile=tempname(); _io=open(tfile,"w"); WaveFD.compressedwrite(_io, $compressor, 1, $field3); close(_io); io=open(tfile)) teardown=(close($compressor); close(io))
