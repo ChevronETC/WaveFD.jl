@@ -78,7 +78,8 @@ function forwardBornInjection!(prop::Prop3DAcoVTIDenQ_DEO2_FDTD, modeltype::Prop
          prop.p,     dmodel["v"], dmodel["ϵ"], dmodel["η"], wavefields["pold"], wavefields["mold"], wavefields["pspace"], wavefields["mspace"])
 end
 
-function adjointBornAccumulation!(prop::Prop3DAcoVTIDenQ_DEO2_FDTD, modeltype::Prop3DAcoVTIDenQ_DEO2_FDTD_Model_VEA, dmodel, wavefields)
+function adjointBornAccumulation!(prop::Prop3DAcoVTIDenQ_DEO2_FDTD, modeltype::Prop3DAcoVTIDenQ_DEO2_FDTD_Model_VEA, 
+        imagingcondition::ImagingConditionStandard, dmodel, wavefields)
     ccall((:Prop3DAcoVTIDenQ_DEO2_FDTD_AdjointBornAccumulation_VEA, libprop3DAcoVTIDenQ_DEO2_FDTD), Cvoid, 
         (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat}, Ptr{Cfloat}, Ptr{Cfloat},        Ptr{Cfloat},        Ptr{Cfloat},          Ptr{Cfloat}),
          prop.p,     dmodel["v"], dmodel["ϵ"], dmodel["η"], wavefields["pold"], wavefields["mold"], wavefields["pspace"], wavefields["mspace"])
