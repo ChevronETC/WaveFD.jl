@@ -279,7 +279,7 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
 #if defined(__FUNCTION_CLONES__)
 __attribute__((target_clones("avx","avx2","avx512f","default")))
 #endif
-    inline void forwardBornInjection(float *dmodel, float *wavefieldDP) {
+    inline void forwardBornInjection(float *dVel, float *wavefieldDP) {
 #pragma omp parallel for collapse(3) num_threads(_nthread) schedule(static)
         for (long bx = 0; bx < _nx; bx += _nbx) {
             for (long by = 0; by < _ny; by += _nby) {
@@ -294,7 +294,7 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
                             for (long kz = bz; kz < kzmax; kz++) {
                                 const long k = kx * _ny * _nz + ky * _nz + kz;
                                 const float V  = _v[k];
-                                const float dV = dmodel[k];
+                                const float dV = dVel[k];
                                 _pCur[k] += (2 * pow(_dt, 2.0f) * dV * wavefieldDP[k]) / V;
                             }
                         }
@@ -315,7 +315,7 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
 #if defined(__FUNCTION_CLONES__)
 __attribute__((target_clones("avx","avx2","avx512f","default")))
 #endif
-    inline void adjointBornAccumulation(float *dmodel, float *wavefieldDP) {
+    inline void adjointBornAccumulation(float *dVel, float *wavefieldDP) {
 #pragma omp parallel for collapse(3) num_threads(_nthread) schedule(static)
         for (long bx = 0; bx < _nx; bx += _nbx) {
             for (long by = 0; by < _ny; by += _nby) {
@@ -331,7 +331,7 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
                                 const long k = kx * _ny * _nz + ky * _nz + kz;
                                 const float V = _v[k];
                                 const float B = _b[k];
-                                dmodel[k] += (2 * B * wavefieldDP[k] * _pOld[k]) / pow(V, 3.0f);
+                                dVel[k] += (2 * B * wavefieldDP[k] * _pOld[k]) / pow(V, 3.0f);
                             }
                         }
                     }
@@ -355,7 +355,7 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
 #if defined(__FUNCTION_CLONES__)
 __attribute__((target_clones("avx","avx2","avx512f","default")))
 #endif
-    inline void adjointBornAccumulation_wavefieldsep(float *dmodel, float *wavefieldDP, const long isFWI) {
+    inline void adjointBornAccumulation_wavefieldsep(float *dVel, float *wavefieldDP, const long isFWI) {
         const long nfft = 2 * _nz;
         const float scale = 1.0f / (float)(nfft);
 
@@ -434,7 +434,7 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
                                 const float V = _v[k];
                                 const float B = _b[k];
                                 const float factor = 2 * B / (V * V * V);
-                                dmodel[k] += factor * real(tmp_nlf[kz] * tmp_adj[kz]);
+                                dVel[k] += factor * real(tmp_nlf[kz] * tmp_adj[kz]);
                             }
                         } // end loop over ky
                     } // end loop over kx
