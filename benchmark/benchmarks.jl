@@ -66,9 +66,9 @@ for nthreads in _nthreads
     SUITE["2DAcoIsoDenQ_DEO2_FDTD"]["$nthreads threads"] = @benchmarkable WaveFD.propagateforward!(p) setup=(p=p2diso($nthreads,$(n_2D.z),$(n_2D.x),$(nb_2D.z),$(nb_2D.x))) teardown=(free(p))
 end
 
-SUITE["2D imaging conditions"] = BenchmarkGroup()
-SUITE["2D imaging conditions"]["Standard"] = @benchmarkable WaveFD.adjointBornAccumulation!(p,ic,x,y) setup=(p=p2diso(Sys.CPU_THREADS,$(n_2D.z),$(n_2D.x),$(nb_2D.z),$(nb_2D.x)); ic=WaveFD.ImagingConditionStandard(); x=zeros(Float32,$(n_2D.z),$(n_2D.x)); y=zeros(Float32,$(n_2D.z,$(n_2D.x)))) teardown=(free(p))
-SUITE["2D imaging conditions"]["Wave field separation"] = @benchmarkable WaveFD.adjointBornAccumulation!(p,ic,x,y) setup=(p=p2diso(Sys.CPU_THREADS,$(n_2D.z),$(n_2D.x),$(nb_2D.z),$(nb_2D.x)); ic=WaveFD.ImagingConditionWaveFieldSeparation(); x=zeros(Float32,$(n_2D.z),$(n_2D.x)); y=zeros(Float32,$(n_2D.z,$(n_2D.x)))) teardown=(free(p))
+SUITE["2DAcoIsoDenQ_DEO2_FDTD"]["imaging condition, standard"] = @benchmarkable WaveFD.adjointBornAccumulation!(p,ic,x,y) setup=(p=p2diso(Sys.CPU_THREADS,$(n_2D.z),$(n_2D.x),$(nb_2D.z),$(nb_2D.x)); ic=WaveFD.ImagingConditionStandard(); x=zeros(Float32,$(n_2D.z),$(n_2D.x)); y=zeros(Float32,$(n_2D.z),$(n_2D.x))) teardown=(free(p))
+SUITE["2DAcoIsoDenQ_DEO2_FDTD"]["imaging condition, wave field separation FWI"] = @benchmarkable WaveFD.adjointBornAccumulation!(p,ic,x,y) setup=(p=p2diso(Sys.CPU_THREADS,$(n_2D.z),$(n_2D.x),$(nb_2D.z),$(nb_2D.x)); ic=WaveFD.ImagingConditionWaveFieldSeparationFWI(); x=zeros(Float32,$(n_2D.z),$(n_2D.x)); y=zeros(Float32,$(n_2D.z),$(n_2D.x))) teardown=(free(p))
+SUITE["2DAcoIsoDenQ_DEO2_FDTD"]["imaging condition, wave field separation RTM"] = @benchmarkable WaveFD.adjointBornAccumulation!(p,ic,x,y) setup=(p=p2diso(Sys.CPU_THREADS,$(n_2D.z),$(n_2D.x),$(nb_2D.z),$(nb_2D.x)); ic=WaveFD.ImagingConditionWaveFieldSeparationRTM(); x=zeros(Float32,$(n_2D.z),$(n_2D.x)); y=zeros(Float32,$(n_2D.z),$(n_2D.x))) teardown=(free(p))
 
 SUITE["2DAcoVTIDenQ_DEO2_FDTD"] = BenchmarkGroup([Dict("ncells"=>n_2D.z*n_2D.x,"nbz"=>nb_2D.z,"nbx"=>nb_2D.x,"nthreads"=>_nthreads)])
 function p2dvti(nthreads,nz,nx,nbz,nbx)
@@ -86,6 +86,16 @@ end
 for nthreads in _nthreads
     SUITE["2DAcoVTIDenQ_DEO2_FDTD"]["$nthreads threads"] = @benchmarkable WaveFD.propagateforward!(p) setup=(p=p2dvti($nthreads,$(n_2D.z),$(n_2D.x),$(nb_2D.z),$(nb_2D.x))) teardown=(free(p))
 end
+
+function fields2dvti(p::WaveFD.Prop2DAcoVTIDenQ_DEO2_FDTD)
+    nz,nx=size(p)
+    δm = Dict("v"=>rand(Float32,nz,nx))
+    fields = Dict("pspace"=>rand(Float32,nz,nx),"mspace"=>rand(Float32,nz,nx))
+    δm,fields
+end
+SUITE["2DAcoVTIDenQ_DEO2_FDTD"]["imaging condition, standard"] = @benchmarkable WaveFD.adjointBornAccumulation!(p,WaveFD.Prop2DAcoVTIDenQ_DEO2_FDTD_Model_V(),ic,δm,fields) setup=(p=p2dvti(Sys.CPU_THREADS,$(n_2D.z),$(n_2D.x),$(nb_2D.z),$(nb_2D.x)); ic=WaveFD.ImagingConditionStandard(); (δm,fields)=fields2dvti(p)) teardown=(free(p))
+SUITE["2DAcoVTIDenQ_DEO2_FDTD"]["imaging condition, wave field separation FWI"] = @benchmarkable WaveFD.adjointBornAccumulation!(p,WaveFD.Prop2DAcoVTIDenQ_DEO2_FDTD_Model_V(),ic,δm,fields) setup=(p=p2dvti(Sys.CPU_THREADS,$(n_2D.z),$(n_2D.x),$(nb_2D.z),$(nb_2D.x)); ic=WaveFD.ImagingConditionWaveFieldSeparationFWI(); (δm,fields)=fields2dvti(p)) teardown=(free(p))
+SUITE["2DAcoVTIDenQ_DEO2_FDTD"]["imaging condition, wave field separation RTM"] = @benchmarkable WaveFD.adjointBornAccumulation!(p,WaveFD.Prop2DAcoVTIDenQ_DEO2_FDTD_Model_V(),ic,δm,fields) setup=(p=p2dvti(Sys.CPU_THREADS,$(n_2D.z),$(n_2D.x),$(nb_2D.z),$(nb_2D.x)); ic=WaveFD.ImagingConditionWaveFieldSeparationRTM(); (δm,fields)=fields2dvti(p)) teardown=(free(p))
 
 SUITE["2DAcoTTIDenQ_DEO2_FDTD"] = BenchmarkGroup([Dict("ncells"=>n_2D.z*n_2D.x,"nbz"=>nb_2D.z,"nbx"=>nb_2D.x,"nthreads"=>_nthreads)])
 function p2dtti(nthreads,nz,nx,nbz,nbx)
@@ -105,6 +115,16 @@ end
 for nthreads in _nthreads
     SUITE["2DAcoTTIDenQ_DEO2_FDTD"]["$nthreads threads"] = @benchmarkable WaveFD.propagateforward!(p) setup=(p=p2dtti($nthreads,$(n_2D.z),$(n_2D.x),$(nb_2D.z),$(nb_2D.x))) teardown=(free(p))
 end
+
+function fields2dtti(p::WaveFD.Prop2DAcoTTIDenQ_DEO2_FDTD)
+    nz,nx = size(p)
+    δm = Dict("v"=>rand(Float32,nz,nx))
+    fields = Dict("pspace"=>rand(Float32,nz,nx),"mspace"=>rand(Float32,nz,nx))
+    δm,fields
+end
+SUITE["2DAcoTTIDenQ_DEO2_FDTD"]["imaging condition, standard"] = @benchmarkable WaveFD.adjointBornAccumulation!(p,WaveFD.Prop2DAcoTTIDenQ_DEO2_FDTD_Model_V(),ic,δm,fields) setup=(p=p2dtti(Sys.CPU_THREADS,$(n_2D.z),$(n_2D.x),$(nb_2D.z),$(nb_2D.x)); ic=WaveFD.ImagingConditionStandard(); (δm,fields)=fields2dtti(p)) teardown=(free(p))
+SUITE["2DAcoTTIDenQ_DEO2_FDTD"]["imaging condition, wave field separation FWI"] = @benchmarkable WaveFD.adjointBornAccumulation!(p,WaveFD.Prop2DAcoTTIDenQ_DEO2_FDTD_Model_V(),ic,δm,fields) setup=(p=p2dtti(Sys.CPU_THREADS,$(n_2D.z),$(n_2D.x),$(nb_2D.z),$(nb_2D.x)); ic=WaveFD.ImagingConditionWaveFieldSeparationFWI(); (δm,fields)=fields2dtti(p)) teardown=(free(p))
+SUITE["2DAcoTTIDenQ_DEO2_FDTD"]["imaging condition, wave field separation RTM"] = @benchmarkable WaveFD.adjointBornAccumulation!(p,WaveFD.Prop2DAcoTTIDenQ_DEO2_FDTD_Model_V(),ic,δm,fields) setup=(p=p2dtti(Sys.CPU_THREADS,$(n_2D.z),$(n_2D.x),$(nb_2D.z),$(nb_2D.x)); ic=WaveFD.ImagingConditionWaveFieldSeparationRTM(); (δm,fields)=fields2dtti(p)) teardown=(free(p))
 
 nz,ny,nx = 501,301,1001
 
@@ -149,6 +169,10 @@ for nthreads in _nthreads
     SUITE["3DAcoIsoDenQ_DEO2_FDTD"]["$nthreads threads"] = @benchmarkable WaveFD.propagateforward!(p) setup=(p=p3diso($nthreads,$(n_3D.z),$(n_3D.y),$(n_3D.x),$(nb_3D.z),$(nb_3D.y),$(nb_3D.x))) teardown=(free(p)) seconds=15
 end
 
+SUITE["3DAcoIsoDenQ_DEO2_FDTD"]["imaging condition, standard"] = @benchmarkable WaveFD.adjointBornAccumulation!(p,ic,x,y) setup=(p=p3diso(Sys.CPU_THREADS,$(n_3D.z),$(n_3D.y),$(n_3D.x),$(nb_3D.z),$(nb_3D.y),$(nb_3D.x)); ic=WaveFD.ImagingConditionStandard(); x=zeros(Float32,$(n_3D.z),$(n_3D.y),$(n_3D.x)); y=zeros(Float32,$(n_3D.z),$(n_3D.y),$(n_3D.x))) teardown=(free(p))
+SUITE["3DAcoIsoDenQ_DEO2_FDTD"]["imaging condition, wave field separation FWI"] = @benchmarkable WaveFD.adjointBornAccumulation!(p,ic,x,y) setup=(p=p3diso(Sys.CPU_THREADS,$(n_3D.z),$(n_3D.y),$(n_3D.x),$(nb_3D.z),$(nb_3D.y),$(nb_3D.x)); ic=WaveFD.ImagingConditionWaveFieldSeparationFWI(); x=zeros(Float32,$(n_3D.z),$(n_3D.y),$(n_3D.x)); y=zeros(Float32,$(n_3D.z),$(n_3D.y),$(n_3D.x))) teardown=(free(p))
+SUITE["3DAcoIsoDenQ_DEO2_FDTD"]["imaging condition, wave field separation RTM"] = @benchmarkable WaveFD.adjointBornAccumulation!(p,ic,x,y) setup=(p=p3diso(Sys.CPU_THREADS,$(n_3D.z),$(n_3D.y),$(n_3D.x),$(nb_3D.z),$(nb_3D.y),$(nb_3D.x)); ic=WaveFD.ImagingConditionWaveFieldSeparationRTM(); x=zeros(Float32,$(n_3D.z),$(n_3D.y),$(n_3D.x)); y=zeros(Float32,$(n_3D.z),$(n_3D.y),$(n_3D.x))) teardown=(free(p))
+
 SUITE["3DAcoVTIDenQ_DEO2_FDTD"] = BenchmarkGroup([Dict("ncells"=>n_3D.z*n_3D.y*n_3D.x,"nbz"=>nb_3D.z,"nby"=>nb_3D.y,"nbx"=>nb_3D.x,"nthreads"=>_nthreads)])
 function p3dvti(nthreads,nz,ny,nx,nbz,nby,nbx)
     p = WaveFD.Prop3DAcoVTIDenQ_DEO2_FDTD(freesurface=false, nz=nz, ny=ny, nx=nx, nbz=nbz, nby=nby, nbx=nbx, dz=10.0, dy=10.0, dx=10.0, dt=0.001, nthreads=nthreads)
@@ -165,6 +189,16 @@ end
 for nthreads in _nthreads
     SUITE["3DAcoVTIDenQ_DEO2_FDTD"]["$nthreads threads"] = @benchmarkable WaveFD.propagateforward!(p) setup=(p=p3dvti($nthreads,$(n_3D.z),$(n_3D.y),$(n_3D.x),$(nb_3D.z),$(nb_3D.y),$(nb_3D.x))) teardown=(free(p)) seconds=15
 end
+
+function fields3dvti(p::WaveFD.Prop3DAcoVTIDenQ_DEO2_FDTD)
+    nz,ny,nx=size(p)
+    δm = Dict("v"=>rand(Float32,nz,ny,nx))
+    fields = Dict("pspace"=>rand(Float32,nz,ny,nx),"mspace"=>rand(Float32,nz,ny,nx))
+    δm,fields
+end
+SUITE["3DAcoVTIDenQ_DEO2_FDTD"]["imaging condition, standard"] = @benchmarkable WaveFD.adjointBornAccumulation!(p,WaveFD.Prop3DAcoVTIDenQ_DEO2_FDTD_Model_V(),ic,δm,fields) setup=(p=p3dvti(Sys.CPU_THREADS,$(n_3D.z),$(n_3D.y),$(n_3D.x),$(nb_3D.z),$(nb_3D.y),$(nb_3D.x)); ic=WaveFD.ImagingConditionStandard(); (δm,fields)=fields3dvti(p)) teardown=(free(p))
+SUITE["3DAcoVTIDenQ_DEO2_FDTD"]["imaging condition, wave field separation FWI"] = @benchmarkable WaveFD.adjointBornAccumulation!(p,WaveFD.Prop3DAcoVTIDenQ_DEO2_FDTD_Model_V(),ic,δm,fields) setup=(p=p3dvti(Sys.CPU_THREADS,$(n_3D.z),$(n_3D.y),$(n_3D.x),$(nb_3D.z),$(nb_3D.y),$(nb_3D.x)); ic=WaveFD.ImagingConditionWaveFieldSeparationFWI(); (δm,fields)=fields3dvti(p)) teardown=(free(p))
+SUITE["3DAcoVTIDenQ_DEO2_FDTD"]["imaging condition, wave field separation RTM"] = @benchmarkable WaveFD.adjointBornAccumulation!(p,WaveFD.Prop3DAcoVTIDenQ_DEO2_FDTD_Model_V(),ic,δm,fields) setup=(p=p3dvti(Sys.CPU_THREADS,$(n_3D.z),$(n_3D.y),$(n_3D.x),$(nb_3D.z),$(nb_3D.y),$(nb_3D.x)); ic=WaveFD.ImagingConditionWaveFieldSeparationRTM(); (δm,fields)=fields3dvti(p)) teardown=(free(p))
 
 SUITE["3DAcoTTIDenQ_DEO2_FDTD"] = BenchmarkGroup([Dict("ncells"=>n_3D.z*n_3D.y*n_3D.x,"nbz"=>nb_3D.z,"nby"=>nb_3D.y,"nbx"=>nb_3D.x,"nthreads"=>_nthreads)])
 function p3dtti(nthreads,nz,ny,nx,nbz,nby,nbx)
@@ -186,6 +220,16 @@ end
 for nthreads in _nthreads
     SUITE["3DAcoTTIDenQ_DEO2_FDTD"]["$nthreads threads"] = @benchmarkable WaveFD.propagateforward!(p) setup=(p=p3dtti($nthreads,$(n_3D.z),$(n_3D.y),$(n_3D.x),$(nb_3D.z),$(nb_3D.y),$(nb_3D.x))) teardown=(free(p)) seconds=15
 end
+
+function fields3dtti(p::WaveFD.Prop3DAcoTTIDenQ_DEO2_FDTD)
+    nz,ny,nx = size(p)
+    δm = Dict("v"=>rand(Float32,nz,ny,nx))
+    fields = Dict("pspace"=>rand(Float32,nz,nx),"mspace"=>rand(Float32,nz,ny,nx))
+    δm,fields
+end
+SUITE["3DAcoTTIDenQ_DEO2_FDTD"]["imaging condition, standard"] = @benchmarkable WaveFD.adjointBornAccumulation!(p,WaveFD.Prop3DAcoTTIDenQ_DEO2_FDTD_Model_V(),ic,δm,fields) setup=(p=p3dtti(Sys.CPU_THREADS,$(n_3D.z),$(n_3D.y),$(n_3D.x),$(nb_3D.z),$(nb_3D.y),$(nb_3D.x)); ic=WaveFD.ImagingConditionStandard(); (δm,fields)=fields3dtti(p)) teardown=(free(p))
+SUITE["3DAcoTTIDenQ_DEO2_FDTD"]["imaging condition, wave field separation FWI"] = @benchmarkable WaveFD.adjointBornAccumulation!(p,WaveFD.Prop3DAcoTTIDenQ_DEO2_FDTD_Model_V(),ic,δm,fields) setup=(p=p3dtti(Sys.CPU_THREADS,$(n_3D.z),$(n_3D.y),$(n_3D.x),$(nb_3D.z),$(nb_3D.y),$(nb_3D.x)); ic=WaveFD.ImagingConditionWaveFieldSeparationFWI(); (δm,fields)=fields3dtti(p)) teardown=(free(p))
+SUITE["3DAcoTTIDenQ_DEO2_FDTD"]["imaging condition, wave field separation RTM"] = @benchmarkable WaveFD.adjointBornAccumulation!(p,WaveFD.Prop3DAcoTTIDenQ_DEO2_FDTD_Model_V(),ic,δm,fields) setup=(p=p3dtti(Sys.CPU_THREADS,$(n_3D.z),$(n_3D.y),$(n_3D.x),$(nb_3D.z),$(nb_3D.y),$(nb_3D.x)); ic=WaveFD.ImagingConditionWaveFieldSeparationRTM(); (δm,fields)=fields3dtti(p)) teardown=(free(p))
 
 include(joinpath(pkgdir(WaveFD), "benchmark", "mcells_per_second.jl"))
 
