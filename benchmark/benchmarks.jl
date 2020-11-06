@@ -224,7 +224,7 @@ end
 function fields3dtti(p::WaveFD.Prop3DAcoTTIDenQ_DEO2_FDTD)
     nz,ny,nx = size(p)
     δm = Dict("v"=>rand(Float32,nz,ny,nx))
-    fields = Dict("pspace"=>rand(Float32,nz,nx),"mspace"=>rand(Float32,nz,ny,nx))
+    fields = Dict("pspace"=>rand(Float32,nz,ny,nx),"mspace"=>rand(Float32,nz,ny,nx))
     δm,fields
 end
 SUITE["3DAcoTTIDenQ_DEO2_FDTD"]["imaging condition, standard"] = @benchmarkable WaveFD.adjointBornAccumulation!(p,WaveFD.Prop3DAcoTTIDenQ_DEO2_FDTD_Model_V(),ic,δm,fields) setup=(p=p3dtti(Sys.CPU_THREADS,$(n_3D.z),$(n_3D.y),$(n_3D.x),$(nb_3D.z),$(nb_3D.y),$(nb_3D.x)); ic=WaveFD.ImagingConditionStandard(); (δm,fields)=fields3dtti(p)) teardown=(free(p))
