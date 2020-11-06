@@ -1,7 +1,6 @@
 module WaveFD
 
-# using Base.Threads, CvxCompress, DSP, Distributed, DistributedArrays, FFTW, LinearAlgebra, NearestNeighbors, Random, SpecialFunctions, StaticArrays, Statistics, WaveFD_jll
-using Base.Threads, CvxCompress, DSP, Distributed, DistributedArrays, FFTW, LinearAlgebra, NearestNeighbors, Random, SpecialFunctions, StaticArrays, Statistics
+using Base.Threads, CvxCompress, DSP, Distributed, DistributedArrays, FFTW, LinearAlgebra, NearestNeighbors, Random, SpecialFunctions, StaticArrays, Statistics, WaveFD_jll
 
 import
 Base.convert,
@@ -23,16 +22,6 @@ abstract type ImagingCondition end
 struct ImagingConditionStandard <: ImagingCondition end
 struct ImagingConditionWaveFieldSeparationFWI <: ImagingCondition end
 struct ImagingConditionWaveFieldSeparationRTM <: ImagingCondition end
-
-# TEMPORARY HACK UNTIL YGGDRASIL 
-const libspacetime = normpath(joinpath(Base.source_path(),"../libspacetime"))
-const libillumination = normpath(joinpath(Base.source_path(),"../libillumination"))
-const libprop2DAcoIsoDenQ_DEO2_FDTD = normpath(joinpath(Base.source_path(),"../libprop2DAcoIsoDenQ_DEO2_FDTD"))
-const libprop2DAcoVTIDenQ_DEO2_FDTD = normpath(joinpath(Base.source_path(),"../libprop2DAcoVTIDenQ_DEO2_FDTD"))
-const libprop2DAcoTTIDenQ_DEO2_FDTD = normpath(joinpath(Base.source_path(),"../libprop2DAcoTTIDenQ_DEO2_FDTD"))
-const libprop3DAcoIsoDenQ_DEO2_FDTD = normpath(joinpath(Base.source_path(),"../libprop3DAcoIsoDenQ_DEO2_FDTD"))
-const libprop3DAcoVTIDenQ_DEO2_FDTD = normpath(joinpath(Base.source_path(),"../libprop3DAcoVTIDenQ_DEO2_FDTD"))
-const libprop3DAcoTTIDenQ_DEO2_FDTD = normpath(joinpath(Base.source_path(),"../libprop3DAcoTTIDenQ_DEO2_FDTD"))
 
 include("stencil.jl")
 include("spacetime.jl")
