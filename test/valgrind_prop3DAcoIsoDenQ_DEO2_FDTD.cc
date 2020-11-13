@@ -63,7 +63,6 @@ void test() {
         tmpPX, tmpPY, tmpPZ, fieldVel, fieldBuoy, dtOmegaInvQ, pCur, pSpace, pOld, nbx, nby, nbz);
     op->scaleSpatialDerivatives();
 
-
     delete [] dVel;
     delete [] wavefieldDP;
     delete [] inPX;
@@ -78,6 +77,7 @@ void test() {
     delete [] pCur;
     delete [] pSpace;
     delete [] pOld;
+    
     delete op;
 }
 

@@ -68,6 +68,7 @@ void test() {
     delete [] pCur;
     delete [] pSpace;
     delete [] pOld;
+    
     delete op;
 }
 

@@ -83,7 +83,6 @@ void test() {
     op->adjointBornAccumulation_wavefieldsep_V(dVel, wavefieldDP, wavefieldDM, 0);
     op->adjointBornAccumulation_wavefieldsep_V(dVel, wavefieldDP, wavefieldDM, 1);
     op->adjointBornAccumulation_VEA(dVel, dEps, dEta, wavefieldP, wavefieldM, wavefieldDP, wavefieldDM);
-
     op->applyFirstDerivatives2D_MinusHalf_TimeUpdate_Nonlinear(freeSurface, nx, nz, nthread,
         1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, outPX, outPZ, outMX, outMZ, fieldVel, fieldBuoy, dtOmegaInvQ, pCur, mCur, pSpace, mSpace, pOld, mOld, nbx, nbz);
     op->applyFirstDerivatives2D_MinusHalf_TimeUpdate_Linear(freeSurface, nx, nz, nthread,
@@ -120,7 +119,6 @@ void test() {
     delete [] mCur;
     delete [] mSpace;
     delete [] mOld;
-
 
     delete op;
 }
