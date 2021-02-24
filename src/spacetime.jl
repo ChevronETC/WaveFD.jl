@@ -842,18 +842,17 @@ function source_blocking(nz, ny, nx, nbz, nby, nbx, iz, iy, ix, c::Vector{<:Abst
 end
 
 """
-  injectdata!(field, data, it, irblk, izblk, ixblk, cblk, izblk_rngs, ixblk_rngs)
+  injectdata!(field, blks, data, it)
 
-Inject data from data[it] into field. `irblk, izblk, ixblk, cblk, izblk_rngs, ixblk_rngs`
-are computed using `WaveFD.injectdata_range`.
+Inject data from data[it] into field. `blks` is computed using `WaveFD.source_blocking`.
 
 The general work-flow is:
 ```
 nz,nx=size(field)
 nthreads=20
-irblk, izblk, ixblk, cblk, izblk_rngs, ixblk_rngs = WaveFD.injectdata_range(nz,nx,nbz,nbx,iz,ix,c)
+blks = WaveFD.source_blocking(nz,nx,nbz,nbx,iz,ix,c)
 for it = 1:ntrec # time loop
-    injectdata!(field, data, it, irblk, izblk, ixblk, cblk, izblk_rngs, ixblk_rngs)
+    WaveFD.injectdata!(field, blks, data, it)
     ...
 end
 ```
