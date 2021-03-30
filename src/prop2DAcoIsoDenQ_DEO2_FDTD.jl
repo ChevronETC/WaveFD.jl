@@ -57,13 +57,33 @@ end
 propagateforward!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD) = ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_TimeStep, libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid, (Ptr{Cvoid},), prop.p)
 propagateadjoint!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD) = propagateforward!(prop) # self-adjoint
 
+abstract type Prop2DAcoIsoDenQ_DEO2_FDTD_Model end
+struct Prop2DAcoIsoDenQ_DEO2_FDTD_Model_V <: Prop2DAcoIsoDenQ_DEO2_FDTD_Model end
+struct Prop2DAcoIsoDenQ_DEO2_FDTD_Model_B <: Prop2DAcoIsoDenQ_DEO2_FDTD_Model end
+struct Prop2DAcoIsoDenQ_DEO2_FDTD_Model_VB <: Prop2DAcoIsoDenQ_DEO2_FDTD_Model end
+
 scale_spatial_derivatives!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD) =
     ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_ScaleSpatialDerivatives, libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid, (Ptr{Cvoid},), prop.p)
 
-function forwardBornInjection!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD,dmodelv,wavefieldp)
-    ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_ForwardBornInjection, libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid,
+# v in model-space
+function forwardBornInjection!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD, modeltype::Prop2DAcoIsoDenQ_DEO2_FDTD_Model_V, dmodel, wavefieldp)
+    ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_ForwardBornInjection_V, libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid,
         (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat}),
-         prop.p,     dmodelv,     wavefieldp)
+         prop.p,     dmodel["v"], wavefieldp)
+end
+
+# v,b in model-space
+function forwardBornInjection!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD, modeltype::Prop2DAcoIsoDenQ_DEO2_FDTD_Model_VB, dmodel, wavefieldp)
+    ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_ForwardBornInjection_VB, libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid,
+        (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat}, Ptr{Cfloat}),
+         prop.p,     dmodel["v"], dmodel["b"], wavefieldp)
+end
+
+# b in model-space
+function forwardBornInjection!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD, modeltype::Prop2DAcoIsoDenQ_DEO2_FDTD_Model_B, dmodel, wavefieldp)
+    ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_ForwardBornInjection_B, libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid,
+        (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat}),
+         prop.p,     dmodel["b"], wavefieldp)
 end
 
 function adjointBornAccumulation!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD,imagingcondition::ImagingConditionStandard,dmodelv,wavefieldp)
