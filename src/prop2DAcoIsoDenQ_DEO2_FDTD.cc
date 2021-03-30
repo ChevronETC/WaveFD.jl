@@ -48,10 +48,22 @@ void Prop2DAcoIsoDenQ_DEO2_FDTD_ScaleSpatialDerivatives(void *p) {
     pc->scaleSpatialDerivatives();
 }
 
-void Prop2DAcoIsoDenQ_DEO2_FDTD_ForwardBornInjection(
+void Prop2DAcoIsoDenQ_DEO2_FDTD_ForwardBornInjection_V(
         void *p, float *dVel, float *wavefieldDP) {
     Prop2DAcoIsoDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop2DAcoIsoDenQ_DEO2_FDTD *>(p);
-    pc->forwardBornInjection(dVel, wavefieldDP);
+    pc->forwardBornInjection_V(dVel, wavefieldDP);
+}
+
+void Prop2DAcoIsoDenQ_DEO2_FDTD_ForwardBornInjection_VB(
+        void *p, float *dVel, float *wavefieldP, float *wavefieldDP) {
+    Prop2DAcoIsoDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop2DAcoIsoDenQ_DEO2_FDTD *>(p);
+    pc->forwardBornInjection_VB(dVel, dVel, wavefieldDP);
+}
+
+void Prop2DAcoIsoDenQ_DEO2_FDTD_ForwardBornInjection_B(
+        void *p, float *dVel, float *wavefieldP, float *wavefieldDP) {
+    Prop2DAcoIsoDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop2DAcoIsoDenQ_DEO2_FDTD *>(p);
+    pc->forwardBornInjection_B(dVel, wavefieldDP);
 }
 
 void Prop2DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation(

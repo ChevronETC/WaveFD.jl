@@ -240,15 +240,47 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
      *   - saved 2nd time derivative of pressure at corresponding time index in array dp2
      *   - Born source term will be injected into the _pCur array
      */
+template<class Type>
 #if defined(__FUNCTION_CLONES__)
 __attribute__((target_clones("avx","avx2","avx512f","default")))
 #endif
-    inline void forwardBornInjection_VB(float *dVel, float *dBuoy, float *wavefieldDP) {
+    inline void forwardBornInjection_VB(Type *dVel, Type *dBuoy, Type *wavefieldP, Type *wavefieldDP) {
+
+        applyFirstDerivatives2D_PlusHalf(_freeSurface, _nx, _nz, _nthread, 
+            _c8_1, _c8_2, _c8_3, _c8_4, _invDx, _invDz, wavefieldP, wavefieldP, _tmpPx1, _tmpPz1, _nbx, _nbz);
+
+// multiply by dB
+
+        applyFirstDerivatives2D_MinusHalf(_freeSurface, _nx, _nz, _nthread, 
+            _c8_1, _c8_2, _c8_3, _c8_4, _invDx, _invDz, _tmpPx1, _tmpPz1,  _tmpPx2, _tmpPz2, _nbx, _nbz);
+
         const long nx4 = _nx - 4;
         const long nz4 = _nz - 4;
 
+        const Type dt2 = pow(_dt, 2.0f);
+
+        // zero output arrays
+#pragma omp parallel for collapse(2) num_threads(_nthread) schedule(static)
+        for (long bx = 0; bx < _nx; bx += _nbx) {
+            for (long bz = 0; bz < _nz; bz += _nbz) {
+                const long kxmax = MIN(bx + _nbx - 1, _nx);
+                const long kzmax = MIN(bz + _nbz - 1, _nz);
+
+                for (long kx = bx; kx < kxmax; kx++) {
+#pragma omp simd
+                    for (long kz = bz; kz < kzmax; kz++) {
+                        long k = kx * _nz + kz;
+                        _tmpPx1[k] = 0;
+                        _tmpPz1[k] = 0;
+                    }
+                }
+            }
+        }
+
+        // Right side derivatives and material parameter sandwich
+
         // interior
-#pragma omp parallel for collapse(2) num_threads(nthread) schedule(static)
+#pragma omp parallel for collapse(2) num_threads(_nthread) schedule(static)
         for (long bx = 4; bx < nx4; bx += _nbx) {
             for (long bz = 4; bz < nz4; bz += _nbz) { /* cache blocking */
 
@@ -262,40 +294,30 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
                         const long k = kxnz + kz;
 
                         const Type stencilDPx =
-                                _c8_1 * (- wavefieldDP[(kx+0) * _nz + kz] + wavefieldDP[(kx+1) * _nz + kz]) +
-                                _c8_2 * (- wavefieldDP[(kx-1) * _nz + kz] + wavefieldDP[(kx+2) * _nz + kz]) +
-                                _c8_3 * (- wavefieldDP[(kx-2) * _nz + kz] + wavefieldDP[(kx+3) * _nz + kz]) +
-                                _c8_4 * (- wavefieldDP[(kx-3) * _nz + kz] + wavefieldDP[(kx+4) * _nz + kz]);
+                                _c8_1 * (- wavefieldP[(kx+0) * _nz + kz] + wavefieldP[(kx+1) * _nz + kz]) +
+                                _c8_2 * (- wavefieldP[(kx-1) * _nz + kz] + wavefieldP[(kx+2) * _nz + kz]) +
+                                _c8_3 * (- wavefieldP[(kx-2) * _nz + kz] + wavefieldP[(kx+3) * _nz + kz]) +
+                                _c8_4 * (- wavefieldP[(kx-3) * _nz + kz] + wavefieldP[(kx+4) * _nz + kz]);
 
                         const Type stencilDPz =
-                                _c8_1 * (- wavefieldDP[kxnz + (kz+0)] + wavefieldDP[kxnz + (kz+1)]) +
-                                _c8_2 * (- wavefieldDP[kxnz + (kz-1)] + wavefieldDP[kxnz + (kz+2)]) +
-                                _c8_3 * (- wavefieldDP[kxnz + (kz-2)] + wavefieldDP[kxnz + (kz+3)]) +
-                                _c8_4 * (- wavefieldDP[kxnz + (kz-3)] + wavefieldDP[kxnz + (kz+4)]);
+                                _c8_1 * (- wavefieldP[kxnz + (kz+0)] + wavefieldP[kxnz + (kz+1)]) +
+                                _c8_2 * (- wavefieldP[kxnz + (kz-1)] + wavefieldP[kxnz + (kz+2)]) +
+                                _c8_3 * (- wavefieldP[kxnz + (kz-2)] + wavefieldP[kxnz + (kz+3)]) +
+                                _c8_4 * (- wavefieldP[kxnz + (kz-3)] + wavefieldP[kxnz + (kz+4)]);
 
                         const Type dPx = _invDx * stencilDPx;
                         const Type dPz = _invDz * stencilDPz;
-
-                        
-
-                        const Type B = _b[k];
-
-                        const Type V  = _v[k];
-                        const Type dV = dVel[k];
                         const Type dB = dBuoy[k];
-                        _pCur[k] += (2 * pow(_dt, 2.0f) * dV * wavefieldDP[k]) / V;
 
-
-                        tmpPX[k] = B * dPx;
-                        tmpPZ[k] = B * dPz;
+                        _tmpPx1[k] = dB * dPx;
+                        _tmpPz1[k] = dB * dPz;
                     }
                 }
             }
         }
 
-        // roll on free surface
-        if (freeSurface) {
-#pragma omp parallel for num_threads(nthread) schedule(static)
+        if (_freeSurface) {
+#pragma omp parallel for num_threads(_nthread) schedule(static)
             for (long kx = 4; kx < nx4; kx++) {
 
                 // kz = 0 -- 1/2 cells below free surface for Z derivative, at free surface for X/Y derivative
@@ -303,120 +325,271 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
                 // [kx * nz + 0]
                 {
                     const Type stencilDPz0 =
-                            c8_1 * (- inPZ[kx * nz + 0] + inPZ[kx * nz + 1]) +
-                            c8_2 * (+ inPZ[kx * nz + 1] + inPZ[kx * nz + 2]) +
-                            c8_3 * (+ inPZ[kx * nz + 2] + inPZ[kx * nz + 3]) +
-                            c8_4 * (+ inPZ[kx * nz + 3] + inPZ[kx * nz + 4]);
+                            _c8_1 * (- wavefieldP[kx * _nz + 0] + wavefieldP[kx * _nz + 1]) +
+                            _c8_2 * (+ wavefieldP[kx * _nz + 1] + wavefieldP[kx * _nz + 2]) +
+                            _c8_3 * (+ wavefieldP[kx * _nz + 2] + wavefieldP[kx * _nz + 3]) +
+                            _c8_4 * (+ wavefieldP[kx * _nz + 3] + wavefieldP[kx * _nz + 4]);
+
+                    const long k = kx * _nz + 0;
 
                     const Type dPx = 0;
-                    const Type dPz = invDz * stencilDPz0;
+                    const Type dPz = _invDz * stencilDPz0;
+                    const Type dB = dBuoy[k];
 
-                    const long k = kx * nz + 0;
-
-                    const Type B = fieldBuoy[k];
-
-                    tmpPX[k] = B * dPx;
-                    tmpPZ[k] = B * dPz;
+                    _tmpPx1[k] = dB * dPx;
+                    _tmpPz1[k] = dB * dPz;
                 }
 
                 // kz = 1 -- 1 1/2 cells below free surface for Z derivative, 1 cells below for X/Y derivative
                 // [kx * nz + 1]
                 {
                     const Type stencilDPx1 =
-                            c8_1 * (- inPX[(kx+0) * nz + 1] + inPX[(kx+1) * nz + 1]) +
-                            c8_2 * (- inPX[(kx-1) * nz + 1] + inPX[(kx+2) * nz + 1]) +
-                            c8_3 * (- inPX[(kx-2) * nz + 1] + inPX[(kx+3) * nz + 1]) +
-                            c8_4 * (- inPX[(kx-3) * nz + 1] + inPX[(kx+4) * nz + 1]);
+                            _c8_1 * (- wavefieldP[(kx+0) * _nz + 1] + wavefieldP[(kx+1) * _nz + 1]) +
+                            _c8_2 * (- wavefieldP[(kx-1) * _nz + 1] + wavefieldP[(kx+2) * _nz + 1]) +
+                            _c8_3 * (- wavefieldP[(kx-2) * _nz + 1] + wavefieldP[(kx+3) * _nz + 1]) +
+                            _c8_4 * (- wavefieldP[(kx-3) * _nz + 1] + wavefieldP[(kx+4) * _nz + 1]);
 
                     const Type stencilDPz1 =
-                            c8_1 * (- inPZ[kx * nz + 1] + inPZ[kx * nz + 2]) +
-                            c8_2 * (- inPZ[kx * nz + 0] + inPZ[kx * nz + 3]) +
-                            c8_3 * (+ inPZ[kx * nz + 1] + inPZ[kx * nz + 4]) +
-                            c8_4 * (+ inPZ[kx * nz + 2] + inPZ[kx * nz + 5]);
+                            _c8_1 * (- wavefieldP[kx * _nz + 1] + wavefieldP[kx * _nz + 2]) +
+                            _c8_2 * (- wavefieldP[kx * _nz + 0] + wavefieldP[kx * _nz + 3]) +
+                            _c8_3 * (+ wavefieldP[kx * _nz + 1] + wavefieldP[kx * _nz + 4]) +
+                            _c8_4 * (+ wavefieldP[kx * _nz + 2] + wavefieldP[kx * _nz + 5]);
 
-                    const Type dPx = invDx * stencilDPx1;
-                    const Type dPz = invDz * stencilDPz1;
+                    const long k = kx * _nz + 1;
 
-                    const long k = kx * nz + 1;
+                    const Type dPx = _invDx * stencilDPx1;
+                    const Type dPz = _invDz * stencilDPz1;
+                    const Type dB = dBuoy[k];
 
-                    const Type B = fieldBuoy[k];
-
-                    tmpPX[k] = B * dPx;
-                    tmpPZ[k] = B * dPz;
+                    _tmpPx1[k] = dB * dPx;
+                    _tmpPz1[k] = dB * dPz;
                 }
 
                 // kz = 2 -- 2 1/2 cells below free surface for Z derivative, 2 cells below for X/Y derivative
                 // [kx * nz + 2]
                 {
                     const Type stencilDPx2 =
-                            c8_1 * (- inPX[(kx+0) * nz + 2] + inPX[(kx+1) * nz + 2]) +
-                            c8_2 * (- inPX[(kx-1) * nz + 2] + inPX[(kx+2) * nz + 2]) +
-                            c8_3 * (- inPX[(kx-2) * nz + 2] + inPX[(kx+3) * nz + 2]) +
-                            c8_4 * (- inPX[(kx-3) * nz + 2] + inPX[(kx+4) * nz + 2]);
+                            _c8_1 * (- wavefieldP[(kx+0) * _nz + 2] + wavefieldP[(kx+1) * _nz + 2]) +
+                            _c8_2 * (- wavefieldP[(kx-1) * _nz + 2] + wavefieldP[(kx+2) * _nz + 2]) +
+                            _c8_3 * (- wavefieldP[(kx-2) * _nz + 2] + wavefieldP[(kx+3) * _nz + 2]) +
+                            _c8_4 * (- wavefieldP[(kx-3) * _nz + 2] + wavefieldP[(kx+4) * _nz + 2]);
 
                     const Type stencilDPz2 =
-                            c8_1 * (- inPZ[kx * nz + 2] + inPZ[kx * nz + 3]) +
-                            c8_2 * (- inPZ[kx * nz + 1] + inPZ[kx * nz + 4]) +
-                            c8_3 * (- inPZ[kx * nz + 0] + inPZ[kx * nz + 5]) +
-                            c8_4 * (+ inPZ[kx * nz + 1] + inPZ[kx * nz + 6]);
+                            _c8_1 * (- wavefieldP[kx * _nz + 2] + wavefieldP[kx * _nz + 3]) +
+                            _c8_2 * (- wavefieldP[kx * _nz + 1] + wavefieldP[kx * _nz + 4]) +
+                            _c8_3 * (- wavefieldP[kx * _nz + 0] + wavefieldP[kx * _nz + 5]) +
+                            _c8_4 * (+ wavefieldP[kx * _nz + 1] + wavefieldP[kx * _nz + 6]);
 
-                    const Type dPx = invDx * stencilDPx2;
-                    const Type dPz = invDz * stencilDPz2;
+                    const long k = kx * _nz + 2;
 
-                    const long k = kx * nz + 2;
+                    const Type dPx = _invDx * stencilDPx2;
+                    const Type dPz = _invDz * stencilDPz2;
+                    const Type dB = dBuoy[k];
 
-                    const Type B = fieldBuoy[k];
-
-                    tmpPX[k] = B * dPx;
-                    tmpPZ[k] = B * dPz;
+                    _tmpPx1[k] = dB * dPx;
+                    _tmpPz1[k] = dB * dPz;
                 }
 
                 // kz = 3 -- 3 1/2 cells below free surface for Z derivative, 3 cells below for X/Y derivative
                 // [kx * nz + 3]
                 {
                     const Type stencilDPx3 =
-                            c8_1 * (- inPX[(kx+0) * nz + 3] + inPX[(kx+1) * nz + 3]) +
-                            c8_2 * (- inPX[(kx-1) * nz + 3] + inPX[(kx+2) * nz + 3]) +
-                            c8_3 * (- inPX[(kx-2) * nz + 3] + inPX[(kx+3) * nz + 3]) +
-                            c8_4 * (- inPX[(kx-3) * nz + 3] + inPX[(kx+4) * nz + 3]);
+                            _c8_1 * (- wavefieldP[(kx+0) * _nz + 3] + wavefieldP[(kx+1) * _nz + 3]) +
+                            _c8_2 * (- wavefieldP[(kx-1) * _nz + 3] + wavefieldP[(kx+2) * _nz + 3]) +
+                            _c8_3 * (- wavefieldP[(kx-2) * _nz + 3] + wavefieldP[(kx+3) * _nz + 3]) +
+                            _c8_4 * (- wavefieldP[(kx-3) * _nz + 3] + wavefieldP[(kx+4) * _nz + 3]);
 
                     const Type stencilDPz3 =
-                            c8_1 * (- inPZ[kx * nz + 3] + inPZ[kx * nz + 4]) +
-                            c8_2 * (- inPZ[kx * nz + 2] + inPZ[kx * nz + 5]) +
-                            c8_3 * (- inPZ[kx * nz + 1] + inPZ[kx * nz + 6]) +
-                            c8_4 * (- inPZ[kx * nz + 0] + inPZ[kx * nz + 7]);
+                            _c8_1 * (- wavefieldP[kx * _nz + 3] + wavefieldP[kx * _nz + 4]) +
+                            _c8_2 * (- wavefieldP[kx * _nz + 2] + wavefieldP[kx * _nz + 5]) +
+                            _c8_3 * (- wavefieldP[kx * _nz + 1] + wavefieldP[kx * _nz + 6]) +
+                            _c8_4 * (- wavefieldP[kx * _nz + 0] + wavefieldP[kx * _nz + 7]);
 
-                    const Type dPx = invDx * stencilDPx3;
-                    const Type dPz = invDz * stencilDPz3;
+                    const long k = kx * _nz + 3;
 
-                    const long k = kx * nz + 3;
+                    const Type dPx = _invDx * stencilDPx3;
+                    const Type dPz = _invDz * stencilDPz3;
+                    const Type dB = dBuoy[k];
 
-                    const Type B = fieldBuoy[k];
-
-                    tmpPX[k] = B * dPx;
-                    tmpPZ[k] = B * dPz;
+                    _tmpPx1[k] = dB * dPx;
+                    _tmpPz1[k] = dB * dPz;
                 }
             }
         }
 
+        // Left side derivatives and material parameter sandwich
+
+        // interior
 #pragma omp parallel for collapse(2) num_threads(_nthread) schedule(static)
-        for (long bx = 0; bx < _nx; bx += _nbx) {
-            for (long bz = 0; bz < _nz; bz += _nbz) {
-                const long kxmax = MIN(bx + _nbx, _nx);
-                const long kzmax = MIN(bz + _nbz, _nz);
+        for (long bx = 4; bx < nx4; bx += _nbx) {
+            for (long bz = 4; bz < nz4; bz += _nbz) { /* cache blocking */
+                const long kxmax = MIN(bx + _nbx, nx4);
+                const long kzmax = MIN(bz + _nbz, nz4);
 
                 for (long kx = bx; kx < kxmax; kx++) {
 #pragma omp simd
                     for (long kz = bz; kz < kzmax; kz++) {
+
+                        const Type stencilDPx =
+                                _c8_1 * (- _tmpPx1[(kx-1) * _nz + kz] + _tmpPx1[(kx+0) * _nz + kz]) +
+                                _c8_2 * (- _tmpPx1[(kx-2) * _nz + kz] + _tmpPx1[(kx+1) * _nz + kz]) +
+                                _c8_3 * (- _tmpPx1[(kx-3) * _nz + kz] + _tmpPx1[(kx+2) * _nz + kz]) +
+                                _c8_4 * (- _tmpPx1[(kx-4) * _nz + kz] + _tmpPx1[(kx+3) * _nz + kz]);
+
+                        const Type stencilDPz =
+                                _c8_1 * (- _tmpPz1[kx * _nz + (kz-1)] + _tmpPz1[kx * _nz + (kz+0)]) +
+                                _c8_2 * (- _tmpPz1[kx * _nz + (kz-2)] + _tmpPz1[kx * _nz + (kz+1)]) +
+                                _c8_3 * (- _tmpPz1[kx * _nz + (kz-3)] + _tmpPz1[kx * _nz + (kz+2)]) +
+                                _c8_4 * (- _tmpPz1[kx * _nz + (kz-4)] + _tmpPz1[kx * _nz + (kz+3)]);
+
+                        const Type dPX = _invDx * stencilDPx;
+                        const Type dPZ = _invDz * stencilDPz;
+
                         const long k = kx * _nz + kz;
+
                         const float V  = _v[k];
+                        const float B  = _b[k];
+                        const float V2 = pow(_v[k],2.0f);
+                        const float V3 = pow(_v[k],3.0f);
                         const float dV = dVel[k];
-                        _pCur[k] += (2 * pow(_dt, 2.0f) * dV * wavefieldDP[k]) / V;
+                        const float dB = dBuoy[k];
+
+                        _pCur[k] += (dt2 * V2 / B) * wavefieldDP[k] * ((2 * B * dV / V3) - dB / V2) + dPX + dPZ;
                     }
                 }
             }
         }
+
+        // roll on free surface
+        if (_freeSurface) {
+#pragma omp parallel for num_threads(_nthread) schedule(guided)
+            for (long kx = 4; kx < nx4; kx++) {
+
+                // kz = 0 -- at the free surface -- p = 0
+                // [kx * nz + 0]
+                {
+                    const Type dPX = 0;
+                    const Type dPZ = 0;
+
+                    const long k = kx * _nz + 0;
+
+                    const float V  = _v[k];
+                    const float B  = _b[k];
+                    const float V2 = pow(_v[k],2.0f);
+                    const float V3 = pow(_v[k],3.0f);
+                    const float dV = dVel[k];
+                    const float dB = dBuoy[k];
+
+                    _pCur[k] += (dt2 * V2 / B) * wavefieldDP[k] * ((2 * B * dV / V3) - dB / V2) + dPX + dPZ;
+                }
+
+                // kz = 1 -- one cell below the free surface
+                // [kx * nz + 1]
+                {
+                    const Type stencilDPx1 =
+                            _c8_1 * (- _tmpPx1[(kx-1) * _nz + 1] + _tmpPx1[(kx+0) * _nz + 1]) +
+                            _c8_2 * (- _tmpPx1[(kx-2) * _nz + 1] + _tmpPx1[(kx+1) * _nz + 1]) +
+                            _c8_3 * (- _tmpPx1[(kx-3) * _nz + 1] + _tmpPx1[(kx+2) * _nz + 1]) +
+                            _c8_4 * (- _tmpPx1[(kx-4) * _nz + 1] + _tmpPx1[(kx+3) * _nz + 1]);
+
+                    const Type stencilDPz1 =
+                            _c8_1 * (- _tmpPz1[kx * _nz + 0] + _tmpPz1[kx * _nz + 1]) +
+                            _c8_2 * (- _tmpPz1[kx * _nz + 0] + _tmpPz1[kx * _nz + 2]) +
+                            _c8_3 * (- _tmpPz1[kx * _nz + 1] + _tmpPz1[kx * _nz + 3]) +
+                            _c8_4 * (- _tmpPz1[kx * _nz + 2] + _tmpPz1[kx * _nz + 4]);
+
+                    const Type dPx = _invDx * stencilDPx1;
+                    const Type dPz = _invDz * stencilDPz1;
+
+                    const long k = kx * _nz + 1;
+
+                    const float V  = _v[k];
+                    const float B  = _b[k];
+                    const float V2 = pow(_v[k],2.0f);
+                    const float V3 = pow(_v[k],3.0f);
+                    const float dV = dVel[k];
+                    const float dB = dBuoy[k];
+
+                    _pCur[k] += (dt2 * V2 / B) * wavefieldDP[k] * ((2 * B * dV / V3) - dB / V2) + dPx + dPz;
+                }
+
+                // kz = 2 -- two cells below the free surface
+                // [kx * nz + 2]
+                {
+                    const Type stencilDPx2 =
+                            _c8_1 * (- _tmpPx1[(kx-1) * _nz + 2] + _tmpPx1[(kx+0) * _nz + 2]) +
+                            _c8_2 * (- _tmpPx1[(kx-2) * _nz + 2] + _tmpPx1[(kx+1) * _nz + 2]) +
+                            _c8_3 * (- _tmpPx1[(kx-3) * _nz + 2] + _tmpPx1[(kx+2) * _nz + 2]) +
+                            _c8_4 * (- _tmpPx1[(kx-4) * _nz + 2] + _tmpPx1[(kx+3) * _nz + 2]);
+
+                    const Type stencilDPz2 =
+                            _c8_1 * (- _tmpPz1[kx * _nz + 1] + _tmpPz1[kx * _nz + 2]) +
+                            _c8_2 * (- _tmpPz1[kx * _nz + 0] + _tmpPz1[kx * _nz + 3]) +
+                            _c8_3 * (- _tmpPz1[kx * _nz + 0] + _tmpPz1[kx * _nz + 4]) +
+                            _c8_4 * (- _tmpPz1[kx * _nz + 1] + _tmpPz1[kx * _nz + 5]);
+
+                    const Type dPx = _invDx * stencilDPx2;
+                    const Type dPz = _invDz * stencilDPz2;
+
+                    const long k = kx * _nz + 2;
+
+                    const float V  = _v[k];
+                    const float B  = _b[k];
+                    const float V2 = pow(_v[k],2.0f);
+                    const float V3 = pow(_v[k],3.0f);
+                    const float dV = dVel[k];
+                    const float dB = dBuoy[k];
+
+                    _pCur[k] += (dt2 * V2 / B) * wavefieldDP[k] * ((2 * B * dV / V3) - dB / V2) + dPx + dPz;
+                }
+
+                // kz = 3 -- three cells below the free surface
+                // [kx * nz + 3]
+                {
+                    const Type stencilDPx3 =
+                            _c8_1 * (- _tmpPx1[(kx-1) * _nz + 3] + _tmpPx1[(kx+0) * _nz + 3]) +
+                            _c8_2 * (- _tmpPx1[(kx-2) * _nz + 3] + _tmpPx1[(kx+1) * _nz + 3]) +
+                            _c8_3 * (- _tmpPx1[(kx-3) * _nz + 3] + _tmpPx1[(kx+2) * _nz + 3]) +
+                            _c8_4 * (- _tmpPx1[(kx-4) * _nz + 3] + _tmpPx1[(kx+3) * _nz + 3]);
+
+                    const Type stencilDPz3 =
+                            _c8_1 * (- _tmpPz1[kx * _nz + 2] + _tmpPz1[kx * _nz + 3]) +
+                            _c8_2 * (- _tmpPz1[kx * _nz + 1] + _tmpPz1[kx * _nz + 4]) +
+                            _c8_3 * (- _tmpPz1[kx * _nz + 0] + _tmpPz1[kx * _nz + 5]) +
+                            _c8_4 * (- _tmpPz1[kx * _nz + 0] + _tmpPz1[kx * _nz + 6]);
+
+                    const Type dPx = _invDx * stencilDPx3;
+                    const Type dPz = _invDz * stencilDPz3;
+
+                    const long k = kx * _nz + 3;
+
+                    const float V  = _v[k];
+                    const float B  = _b[k];
+                    const float V2 = pow(_v[k],2.0f);
+                    const float V3 = pow(_v[k],3.0f);
+                    const float dV = dVel[k];
+                    const float dB = dBuoy[k];
+
+                    _pCur[k] += (dt2 * V2 / B) * wavefieldDP[k] * ((2 * B * dV / V3) - dB / V2) + dPx + dPz;
+                }
+            }
+        }
+
+
     }
+
+
+
+
+template<class Type>
+#if defined(__FUNCTION_CLONES__)
+__attribute__((target_clones("avx","avx2","avx512f","default")))
+#endif
+    inline void forwardBornInjection_B(Type *dBuoy, Type *wavefieldP, Type *wavefieldDP) {
+    }
+
+
+
 
     /**
      * Accumulate the Born image term at the current time
