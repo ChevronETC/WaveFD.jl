@@ -106,4 +106,14 @@ float * Prop2DAcoIsoDenQ_DEO2_FDTD_getPOld(void *p) {
     return pc->_pOld;
 }
 
+float * Prop2DAcoIsoDenQ_DEO2_FDTD_getTmpPx1(void *p) {
+    Prop2DAcoIsoDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop2DAcoIsoDenQ_DEO2_FDTD *>(p);
+    return pc->_tmpPx1;
+}
+
+float * Prop2DAcoIsoDenQ_DEO2_FDTD_getTmpPz1(void *p) {
+    Prop2DAcoIsoDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop2DAcoIsoDenQ_DEO2_FDTD *>(p);
+    return pc->_tmpPz1;
+}
+
 }

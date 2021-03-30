@@ -49,7 +49,7 @@ function size(prop::Prop2DAcoIsoDenQ_DEO2_FDTD)
     (nz,nx)
 end
 
-for _f in (:V, :B, :PSpace, :PCur, :POld, :DtOmegaInvQ)
+for _f in (:V, :B, :PSpace, :PCur, :POld, :DtOmegaInvQ, :TmpPx1, :TmpPz1)
     symf = "Prop2DAcoIsoDenQ_DEO2_FDTD_get" * string(_f)
     @eval $(_f)(prop::Prop2DAcoIsoDenQ_DEO2_FDTD) = unsafe_wrap(Array, ccall(($symf, libprop2DAcoIsoDenQ_DEO2_FDTD), Ptr{Float32}, (Ptr{Cvoid},), prop.p), size(prop), own=false)
 end
