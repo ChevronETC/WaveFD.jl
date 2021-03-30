@@ -52,16 +52,40 @@ void Prop3DAcoIsoDenQ_DEO2_FDTD_ScaleSpatialDerivatives(void *p) {
     pc->scaleSpatialDerivatives();
 }
 
-void Prop3DAcoIsoDenQ_DEO2_FDTD_ForwardBornInjection(
+void Prop3DAcoIsoDenQ_DEO2_FDTD_ForwardBornInjection_V(
         void *p, float *dVel, float *wavefieldDP) {
     Prop3DAcoIsoDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop3DAcoIsoDenQ_DEO2_FDTD *>(p);
-    pc->forwardBornInjection(dVel, wavefieldDP);
+    pc->forwardBornInjection_V(dVel, wavefieldDP);
 }
 
-void Prop3DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation(
+void Prop3DAcoIsoDenQ_DEO2_FDTD_ForwardBornInjection_VB(
+        void *p, float *dVel, float *dBuoy, float *wavefieldP, float *wavefieldDP) {
+    Prop3DAcoIsoDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop3DAcoIsoDenQ_DEO2_FDTD *>(p);
+    pc->forwardBornInjection_VB(dVel, dBuoy, wavefieldP, wavefieldDP);
+}
+
+void Prop3DAcoIsoDenQ_DEO2_FDTD_ForwardBornInjection_B(
+        void *p, float *dBuoy, float *wavefieldP, float *wavefieldDP) {
+    Prop3DAcoIsoDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop3DAcoIsoDenQ_DEO2_FDTD *>(p);
+    pc->forwardBornInjection_B(dBuoy, wavefieldP, wavefieldDP);
+}
+
+void Prop3DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_V(
         void *p, float *dVel, float *wavefieldDP) {
     Prop3DAcoIsoDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop3DAcoIsoDenQ_DEO2_FDTD *>(p);
-    pc->adjointBornAccumulation(dVel, wavefieldDP);
+    pc->adjointBornAccumulation_V(dVel, wavefieldDP);
+}
+
+void Prop3DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_VB(
+        void *p, float *dVel, float *dBuoy, float *wavefieldP, float *wavefieldDP) {
+    Prop3DAcoIsoDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop3DAcoIsoDenQ_DEO2_FDTD *>(p);
+    pc->adjointBornAccumulation_VB(dVel, dBuoy, wavefieldP, wavefieldDP);
+}
+
+void Prop3DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_B(
+        void *p, float *dBuoy, float *wavefieldP, float *wavefieldDP) {
+    Prop3DAcoIsoDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop3DAcoIsoDenQ_DEO2_FDTD *>(p);
+    pc->adjointBornAccumulation_B(dBuoy, wavefieldP, wavefieldDP);
 }
 
 void Prop3DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_wavefieldsep(
