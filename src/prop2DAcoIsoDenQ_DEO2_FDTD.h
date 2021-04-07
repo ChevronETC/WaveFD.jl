@@ -267,10 +267,12 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
                         const Type B  = _b[k];
                         const Type dV = dVel[k];
 
-                        const Type dt2v2OverB = _dt * _dt * V * V / B;
-                        const Type factorV = 2 * B * dV / (V * V * V);
+                        // const Type dt2v2OverB = _dt * _dt * V * V / B;
+                        // const Type factorV = 2 * B * dV / (V * V * V);
 
-                        _pCur[k] += dt2v2OverB * wavefieldDP[k] * factorV;
+                        const Type factor = 2 * _dt * _dt * dV  / V;
+
+                        _pCur[k] += factor * wavefieldDP[k];
                     }
                 }
             }
@@ -285,7 +287,7 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
      *   - saved 2nd time derivative of pressure at corresponding time index in array dp2
      *   - Born source term will be injected into the _pCur array
      *
-     * TODO: if these second derivatice call and following loop is expensive, 
+     * TODO: if these second derivative call and following loop is expensive,
      *       could consider fusing the two derivative loops with the final loop
      */
 template<class Type>
@@ -338,11 +340,12 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
                         const Type dV = dVel[k];
                         const Type dB = dBuoy[k];
 
-                        const Type dt2v2OverB = _dt * _dt * V * V / B;
-                        const Type factorV = 2 * B * dV / (V * V * V);
-                        const Type factorB = - dB / (V * V);
+                        const Type V2 = V * V;
+                        const Type dt2v2OverB = _dt * _dt * V2 / B;
+                        // const Type factorV = 2 * B * dV / (V * V * V);
+                        // const Type factorB = - dB / (V * V);
 
-                        _pCur[k] += dt2v2OverB * (wavefieldDP[k] * (factorV + factorB) + _tmpPx1[k] + _tmpPz1[k]);
+                        _pCur[k] += dt2v2OverB * (wavefieldDP[k] / V2 * (2 * B * dV / V - dB) + _tmpPx1[k] + _tmpPz1[k]);
                     }
                 }
             }
@@ -409,8 +412,9 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
                         const Type B  = _b[k];
                         const Type dB = dBuoy[k];
 
-                        const Type dt2v2OverB = _dt * _dt * V * V / B;
-                        const Type factorB = - dB / (V * V);
+                        const Type V2 = V * V;
+                        const Type dt2v2OverB = _dt * _dt * V2 / B;
+                        const Type factorB = - dB / V2;
 
                         _pCur[k] += dt2v2OverB * (wavefieldDP[k] * factorB + _tmpPx1[k] + _tmpPz1[k]);
                     }
@@ -505,7 +509,7 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
                         const Type factorB = - 1 / (V * V);
 
                         dVel[k]  += factorV * wavefieldDP[k] * _pOld[k];
-                        dBuoy[k] += factorB * wavefieldDP[k] * _pOld[k] 
+                        dBuoy[k] += factorB * wavefieldDP[k] * _pOld[k]
                             - _tmpPx1[k] * _tmpPx2[k] - _tmpPz1[k] * _tmpPz2[k];
                     }
                 }
