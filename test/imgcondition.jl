@@ -49,9 +49,9 @@ x0 = div(nx,2)
         grtm = zeros(Float32,nz,nx)
 
         if physics == "ISO"
-            WaveFD.adjointBornAccumulation!(piso, WaveFD.ImagingConditionStandard(), gstd, wp)
-            WaveFD.adjointBornAccumulation!(piso, WaveFD.ImagingConditionWaveFieldSeparationFWI(), gfwi, wp)
-            WaveFD.adjointBornAccumulation!(piso, WaveFD.ImagingConditionWaveFieldSeparationRTM(), grtm, wp)
+            WaveFD.adjointBornAccumulation!(piso, WaveFD.Prop2DAcoIsoDenQ_DEO2_FDTD_Model_V(), WaveFD.ImagingConditionStandard(), Dict("v"=>gstd), Dict("pspace"=>wp))
+            WaveFD.adjointBornAccumulation!(piso, WaveFD.Prop2DAcoIsoDenQ_DEO2_FDTD_Model_V(), WaveFD.ImagingConditionWaveFieldSeparationFWI(), Dict("v"=>gfwi), Dict("pspace"=>wp))
+            WaveFD.adjointBornAccumulation!(piso, WaveFD.Prop2DAcoIsoDenQ_DEO2_FDTD_Model_V(), WaveFD.ImagingConditionWaveFieldSeparationRTM(), Dict("v"=>grtm), Dict("pspace"=>wp))
         elseif physics == "VTI"
             w_dict = Dict("pspace" => wp, "mspace" => wm)
             WaveFD.adjointBornAccumulation!(pvti, WaveFD.Prop2DAcoVTIDenQ_DEO2_FDTD_Model_V(), WaveFD.ImagingConditionStandard(), Dict("v" => gstd), w_dict)
@@ -104,9 +104,9 @@ x0 = div(nx,2)
         grtm = zeros(Float32,nz,ny,nx)
 
         if physics == "ISO"
-            WaveFD.adjointBornAccumulation!(piso, WaveFD.ImagingConditionStandard(), gstd, wp)
-            WaveFD.adjointBornAccumulation!(piso, WaveFD.ImagingConditionWaveFieldSeparationFWI(), gfwi, wp)
-            WaveFD.adjointBornAccumulation!(piso, WaveFD.ImagingConditionWaveFieldSeparationRTM(), grtm, wp)
+            WaveFD.adjointBornAccumulation!(piso, WaveFD.Prop3DAcoIsoDenQ_DEO2_FDTD_Model_V(), WaveFD.ImagingConditionStandard(), Dict("v"=>gstd), Dict("pspace"=>wp))
+            WaveFD.adjointBornAccumulation!(piso, WaveFD.Prop3DAcoIsoDenQ_DEO2_FDTD_Model_V(), WaveFD.ImagingConditionWaveFieldSeparationFWI(), Dict("v"=>gfwi), Dict("pspace"=>wp))
+            WaveFD.adjointBornAccumulation!(piso, WaveFD.Prop3DAcoIsoDenQ_DEO2_FDTD_Model_V(), WaveFD.ImagingConditionWaveFieldSeparationRTM(), Dict("v"=>grtm), Dict("pspace"=>wp))
         elseif physics == "VTI"
             w_dict = Dict("pspace" => wp, "mspace" => wm)
             WaveFD.adjointBornAccumulation!(pvti, WaveFD.Prop3DAcoVTIDenQ_DEO2_FDTD_Model_V(), WaveFD.ImagingConditionStandard(), Dict("v" => gstd), w_dict)

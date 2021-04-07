@@ -155,4 +155,24 @@ float * Prop2DAcoVTIDenQ_DEO2_FDTD_getMOld(void *p) {
     return pc->_mOld;
 }
 
+void Prop2DAcoVTIDenQ_DEO2_FDTD_applyFirstDerivatives2D_PlusHalf(
+        const long freeSurface,
+        const long nx,
+        const long nz,
+        const long nthread,
+        const float c8_1,
+        const float c8_2,
+        const float c8_3,
+        const float c8_4,
+        const float invDx,
+        const float invDz,
+        const float * __restrict__ const inX,
+        const float * __restrict__ const inZ,
+        float * __restrict__ outX,
+        float * __restrict__ outZ,
+        const long BX_2D,
+        const long BZ_2D) {
+    applyFirstDerivatives2D_PlusHalf(freeSurface,nx,nz,nthread,c8_1,c8_2,c8_3,c8_4,invDx,invDz,inX,inZ,outX,outZ,BX_2D,BZ_2D);
+}
+
 }

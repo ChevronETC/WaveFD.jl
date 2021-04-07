@@ -9,6 +9,8 @@
 #include <fftw3.h>
 #include <complex>
 
+#include "propagatorStaticFunctions.h"
+
 #define MIN(x,y) ((x)<(y)?(x):(y))
 
 class Prop2DAcoIsoDenQ_DEO2_FDTD {
@@ -25,6 +27,8 @@ public:
     float * __restrict__ _pSpace = NULL;
     float * __restrict__ _tmpPx1 = NULL;
     float * __restrict__ _tmpPz1 = NULL;
+    float * __restrict__ _tmpPx2 = NULL;
+    float * __restrict__ _tmpPz2 = NULL;
     float * _pOld = NULL;
     float * _pCur = NULL;
 
@@ -63,11 +67,13 @@ public:
         _pSpace      = new float[_nx * _nz];
         _tmpPx1      = new float[_nx * _nz];
         _tmpPz1      = new float[_nx * _nz];
+        _tmpPx2      = new float[_nx * _nz];
+        _tmpPz2      = new float[_nx * _nz];
         _pOld        = new float[_nx * _nz];
         _pCur        = new float[_nx * _nz];
 
         numaFirstTouch(_nx, _nz, _nthread, _v, _b,
-            _dtOmegaInvQ, _pSpace, _tmpPx1, _tmpPz1, _pOld, _pCur,
+            _dtOmegaInvQ, _pSpace, _tmpPx1, _tmpPz1, _tmpPx2, _tmpPz2, _pOld, _pCur,
             _nbx, _nbz);
     }
 
@@ -84,6 +90,8 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
             float * __restrict__ pSpace,
             float * __restrict__ tmpPx1,
             float * __restrict__ tmpPz1,
+            float * __restrict__ tmpPx2,
+            float * __restrict__ tmpPz2,
             float * __restrict__ pOld,
             float * __restrict__ pCur,
             const long BX_2D,
@@ -109,6 +117,8 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
                         pSpace[k] = 0;
                         tmpPx1[k] = 0;
                         tmpPz1[k] = 0;
+                        tmpPx2[k] = 0;
+                        tmpPz2[k] = 0;
                         pOld[k] = 0;
                         pCur[k] = 0;
                     }
@@ -122,7 +132,7 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
 #pragma omp simd
             for (long kx = 0; kx < nx; kx++) {
                 const long k = kx * _nz + kz;
-                v[k] = b[k] = dtOmegaInvQ[k] = tmpPx1[k] = tmpPz1[k] = pOld[k] = pCur[k] = 0;
+                v[k] = b[k] = dtOmegaInvQ[k] = tmpPx1[k] = tmpPz1[k] = tmpPx2[k] = tmpPz2[k] = pOld[k] = pCur[k] = 0;
             }
         }
 #pragma omp parallel for num_threads(nthread) schedule(static)
@@ -130,7 +140,7 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
 #pragma omp simd
             for (long kx = 0; kx < nx; kx++) {
                 const long k = kx * _nz + kz;
-                v[k] = b[k] = dtOmegaInvQ[k] = tmpPx1[k] = tmpPz1[k] = pOld[k] = pCur[k] = 0;
+                v[k] = b[k] = dtOmegaInvQ[k] = tmpPx1[k] = tmpPz1[k] = tmpPx2[k] = tmpPz2[k] = pOld[k] = pCur[k] = 0;
             }
         }
 
@@ -139,7 +149,7 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
 #pragma omp simd
             for (long kz = 0; kz < nz; kz++) {
                 const long k = kx * _nz + kz;
-                v[k] = b[k] = dtOmegaInvQ[k] = tmpPx1[k] = tmpPz1[k] = pOld[k] = pCur[k] = 0;
+                v[k] = b[k] = dtOmegaInvQ[k] = tmpPx1[k] = tmpPz1[k] = tmpPx2[k] = tmpPz2[k] = pOld[k] = pCur[k] = 0;
             }
         }
 #pragma omp parallel for num_threads(nthread) schedule(static)
@@ -147,7 +157,7 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
 #pragma omp simd
             for (long kz = 0; kz < nz; kz++) {
                 const long k = kx * _nz + kz;
-                v[k] = b[k] = dtOmegaInvQ[k] = tmpPx1[k] = tmpPz1[k] = pOld[k] = pCur[k] = 0;
+                v[k] = b[k] = dtOmegaInvQ[k] = tmpPx1[k] = tmpPz1[k] = tmpPx2[k] = tmpPz2[k] = pOld[k] = pCur[k] = 0;
             }
         }
     }
@@ -159,6 +169,8 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
         if (_pSpace != NULL) delete [] _pSpace;
         if (_tmpPx1 != NULL) delete [] _tmpPx1;
         if (_tmpPz1 != NULL) delete [] _tmpPz1;
+        if (_tmpPx2 != NULL) delete [] _tmpPx2;
+        if (_tmpPz2 != NULL) delete [] _tmpPz2;
         if (_pOld != NULL) delete [] _pOld;
         if (_pCur != NULL) delete [] _pCur;
     }
@@ -202,17 +214,12 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
     }
 
     /**
-     * Add the Born source at the current time
-     *
-     * User must have:
-     *   - called the nonlinear forward
-     *   - saved 2nd time derivative of pressure at corresponding time index in array dp2
-     *   - Born source term will be injected into the _pCur array
+     * Scale spatial derivatives by v^2/b to make them temporal derivs
      */
 #if defined(__FUNCTION_CLONES__)
 __attribute__((target_clones("avx","avx2","avx512f","default")))
 #endif
-    inline void forwardBornInjection(float *dVel, float *wavefieldDP) {
+    inline void scaleSpatialDerivatives() {
 #pragma omp parallel for collapse(2) num_threads(_nthread) schedule(static)
         for (long bx = 0; bx < _nx; bx += _nbx) {
             for (long bz = 0; bz < _nz; bz += _nbz) {
@@ -223,9 +230,8 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
 #pragma omp simd
                     for (long kz = bz; kz < kzmax; kz++) {
                         const long k = kx * _nz + kz;
-                        const float V  = _v[k];
-                        const float dV = dVel[k];
-                        _pCur[k] += (2 * pow(_dt, 2.0f) * dV * wavefieldDP[k]) / V;
+                        const float v2OverB = _v[k] * _v[k] / _b[k];
+                        _pSpace[k] *= v2OverB;
                     }
                 }
             }
@@ -233,17 +239,210 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
     }
 
     /**
-     * Accumulate the Born image term at the current time
+     * Add the Born source for velocity only model-space at the current time
+     *
+     * User must have:
+     *   - called the nonlinear forward
+     *   - saved 2nd time derivative of pressure at corresponding time index in array dp2
+     *   - Born source term will be injected into the _pCur array
+     */
+template<class Type>
+#if defined(__FUNCTION_CLONES__)
+__attribute__((target_clones("avx","avx2","avx512f","default")))
+#endif
+    inline void forwardBornInjection_V(Type *dVel, Type *wavefieldDP) {      
+  
+#pragma omp parallel for collapse(2) num_threads(_nthread) schedule(static)
+        for (long bx = 0; bx < _nx; bx += _nbx) {
+            for (long bz = 0; bz < _nz; bz += _nbz) {
+                const long kxmax = MIN(bx + _nbx, _nx);
+                const long kzmax = MIN(bz + _nbz, _nz);
+
+                for (long kx = bx; kx < kxmax; kx++) {
+#pragma omp simd
+                    for (long kz = bz; kz < kzmax; kz++) {
+                        const long k = kx * _nz + kz;
+
+                        const Type V  = _v[k];
+                        const Type B  = _b[k];
+                        const Type dV = dVel[k];
+
+                        // const Type dt2v2OverB = _dt * _dt * V * V / B;
+                        // const Type factorV = 2 * B * dV / (V * V * V);
+
+                        const Type factor = 2 * _dt * _dt * dV  / V;
+
+                        _pCur[k] += factor * wavefieldDP[k];
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Add the Born source for buoyancy and velocity model-space at the current time
+     *
+     * User must have:
+     *   - called the nonlinear forward
+     *   - saved 2nd time derivative of pressure at corresponding time index in array dp2
+     *   - Born source term will be injected into the _pCur array
+     *
+     * TODO: if these second derivative call and following loop is expensive,
+     *       could consider fusing the two derivative loops with the final loop
+     */
+template<class Type>
+#if defined(__FUNCTION_CLONES__)
+__attribute__((target_clones("avx","avx2","avx512f","default")))
+#endif
+    inline void forwardBornInjection_VB(Type *dVel, Type *dBuoy, Type *wavefieldP, Type *wavefieldDP) {
+
+        applyFirstDerivatives2D_PlusHalf(
+            _freeSurface, _nx, _nz, _nthread, _c8_1, _c8_2, _c8_3, _c8_4, _invDx, _invDz, 
+            wavefieldP, wavefieldP, _tmpPx1, _tmpPz1, _nbx, _nbz);
+
+#pragma omp parallel for collapse(2) num_threads(_nthread) schedule(static)
+        for (long bx = 0; bx < _nx; bx += _nbx) {
+            for (long bz = 0; bz < _nz; bz += _nbz) {
+                const long kxmax = MIN(bx + _nbx, _nx);
+                const long kzmax = MIN(bz + _nbz, _nz);
+
+                for (long kx = bx; kx < kxmax; kx++) {
+#pragma omp simd
+                    for (long kz = bz; kz < kzmax; kz++) {
+                        const long k = kx * _nz + kz;
+
+                        const Type dB = dBuoy[k];
+
+                        _tmpPx2[k] = dB * _tmpPx1[k];
+                        _tmpPz2[k] = dB * _tmpPz1[k];
+                    }
+                }
+            }
+        }
+
+        applyFirstDerivatives2D_MinusHalf(
+            _freeSurface, _nx, _nz, _nthread, _c8_1, _c8_2, _c8_3, _c8_4, _invDx, _invDz, 
+            _tmpPx2, _tmpPz2, _tmpPx1, _tmpPz1, _nbx, _nbz);
+
+#pragma omp parallel for collapse(2) num_threads(_nthread) schedule(static)
+        for (long bx = 0; bx < _nx; bx += _nbx) {
+            for (long bz = 0; bz < _nz; bz += _nbz) {
+                const long kxmax = MIN(bx + _nbx, _nx);
+                const long kzmax = MIN(bz + _nbz, _nz);
+
+                for (long kx = bx; kx < kxmax; kx++) {
+#pragma omp simd
+                    for (long kz = bz; kz < kzmax; kz++) {
+                        const long k = kx * _nz + kz;
+
+                        const Type V  = _v[k];
+                        const Type B  = _b[k];
+                        const Type dV = dVel[k];
+                        const Type dB = dBuoy[k];
+
+                        const Type V2 = V * V;
+                        const Type dt2v2OverB = _dt * _dt * V2 / B;
+                        // const Type factorV = 2 * B * dV / (V * V * V);
+                        // const Type factorB = - dB / (V * V);
+
+                        _pCur[k] += dt2v2OverB * (wavefieldDP[k] / V2 * (2 * B * dV / V - dB) + _tmpPx1[k] + _tmpPz1[k]);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Add the Born source for buoyancy model-space at the current time
+     *
+     * User must have:
+     *   - called the nonlinear forward
+     *   - saved 2nd time derivative of pressure at corresponding time index in array dp2
+     *   - Born source term will be injected into the _pCur array
+     *
+     * TODO: if these second derivatice call and following loop is expensive, 
+     *       could consider fusing the two derivative loops with the final loop
+     */
+template<class Type>
+#if defined(__FUNCTION_CLONES__)
+__attribute__((target_clones("avx","avx2","avx512f","default")))
+#endif
+    inline void forwardBornInjection_B(Type *dBuoy, Type *wavefieldP, Type *wavefieldDP) {
+
+        applyFirstDerivatives2D_PlusHalf(
+            _freeSurface, _nx, _nz, _nthread, _c8_1, _c8_2, _c8_3, _c8_4, _invDx, _invDz, 
+            wavefieldP, wavefieldP, _tmpPx1, _tmpPz1, _nbx, _nbz);
+
+#pragma omp parallel for collapse(2) num_threads(_nthread) schedule(static)
+        for (long bx = 0; bx < _nx; bx += _nbx) {
+            for (long bz = 0; bz < _nz; bz += _nbz) {
+                const long kxmax = MIN(bx + _nbx, _nx);
+                const long kzmax = MIN(bz + _nbz, _nz);
+
+                for (long kx = bx; kx < kxmax; kx++) {
+#pragma omp simd
+                    for (long kz = bz; kz < kzmax; kz++) {
+                        const long k = kx * _nz + kz;
+
+                        const Type dB = dBuoy[k];
+
+                        _tmpPx2[k] = dB * _tmpPx1[k];
+                        _tmpPz2[k] = dB * _tmpPz1[k];
+                    }
+                }
+            }
+        }
+
+        applyFirstDerivatives2D_MinusHalf(
+            _freeSurface, _nx, _nz, _nthread, _c8_1, _c8_2, _c8_3, _c8_4, _invDx, _invDz, 
+            _tmpPx2, _tmpPz2, _tmpPx1, _tmpPz1, _nbx, _nbz);
+
+#pragma omp parallel for collapse(2) num_threads(_nthread) schedule(static)
+        for (long bx = 0; bx < _nx; bx += _nbx) {
+            for (long bz = 0; bz < _nz; bz += _nbz) {
+                const long kxmax = MIN(bx + _nbx, _nx);
+                const long kzmax = MIN(bz + _nbz, _nz);
+
+                for (long kx = bx; kx < kxmax; kx++) {
+#pragma omp simd
+                    for (long kz = bz; kz < kzmax; kz++) {
+                        const long k = kx * _nz + kz;
+
+                        const Type V  = _v[k];
+                        const Type B  = _b[k];
+                        const Type dB = dBuoy[k];
+
+                        const Type V2 = V * V;
+                        const Type dt2v2OverB = _dt * _dt * V2 / B;
+                        const Type factorB = - dB / V2;
+
+                        _pCur[k] += dt2v2OverB * (wavefieldDP[k] * factorB + _tmpPx1[k] + _tmpPz1[k]);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Accumulate the Born image term at the current time for velocity only model-space
      *
      * User must have:
      *   - called the nonlinear forward
      *   - saved 2nd time derivative of pressure at corresponding time index in array dp2
      *   - Born image term will be accumulated iu the _dm array
+     *
+     *   - velocity term: [+ 2B/V^3 LtP r                                 ]
+     *   - buoyancy  term: [- 1/V^2  LtP r - dx' P dx - dy' P dy - dz' P dz]
+     *
+     * TODO: if these adjoint accumulations are expensive, could consider fusing the 
+     *       two derivative loops with the final loop
      */
+template<class Type>
 #if defined(__FUNCTION_CLONES__)
 __attribute__((target_clones("avx","avx2","avx512f","default")))
 #endif
-    inline void adjointBornAccumulation(float *dVel, float *wavefieldDP) {
+    inline void adjointBornAccumulation_V(Type *dVel, Type *wavefieldDP) {
+
 #pragma omp parallel for num_threads(_nthread) schedule(static)
         for (long bx = 0; bx < _nx; bx += _nbx) {
             for (long bz = 0; bz < _nz; bz += _nbz) {
@@ -254,9 +453,113 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
 #pragma omp simd
                     for (long kz = bz; kz < kzmax; kz++) {
                         const long k = kx * _nz + kz;
-                        const float V = _v[k];
-                        const float B = _b[k];
-                        dVel[k] += (2 * B * wavefieldDP[k] * _pOld[k]) / pow(V, 3.0f);
+
+                        const Type V = _v[k];
+                        const Type B = _b[k];
+
+                        const Type factorV = + 2 * B / (V * V * V);
+
+                        dVel[k]  += factorV * wavefieldDP[k] * _pOld[k];
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Accumulate the Born image term at the current time for velocity and buoyancy model-space
+     *
+     * User must have:
+     *   - called the nonlinear forward
+     *   - saved 2nd time derivative of pressure at corresponding time index in array dp2
+     *   - Born image term will be accumulated iu the _dm array
+     *
+     *   - velocity term: [+ 2B/V^3 LtP r                                 ]
+     *   - buoyancy  term: [- 1/V^2  LtP r - dx' P dx - dy' P dy - dz' P dz]
+     */
+template<class Type>
+#if defined(__FUNCTION_CLONES__)
+__attribute__((target_clones("avx","avx2","avx512f","default")))
+#endif
+    inline void adjointBornAccumulation_VB(Type *dVel, Type *dBuoy, Type *wavefieldP, Type *wavefieldDP) {
+
+        applyFirstDerivatives2D_PlusHalf(
+            _freeSurface, _nx, _nz, _nthread, _c8_1, _c8_2, _c8_3, _c8_4, _invDx, _invDz,
+            wavefieldP, wavefieldP, _tmpPx1, _tmpPz1, _nbx, _nbz);
+
+        applyFirstDerivatives2D_PlusHalf(
+            _freeSurface, _nx, _nz, _nthread, _c8_1, _c8_2, _c8_3, _c8_4, _invDx, _invDz,
+            _pOld, _pOld, _tmpPx2, _tmpPz2, _nbx, _nbz);
+
+#pragma omp parallel for num_threads(_nthread) schedule(static)
+        for (long bx = 0; bx < _nx; bx += _nbx) {
+            for (long bz = 0; bz < _nz; bz += _nbz) {
+                const long kxmax = MIN(bx + _nbx, _nx);
+                const long kzmax = MIN(bz + _nbz, _nz);
+
+                for (long kx = bx; kx < kxmax; kx++) {
+#pragma omp simd
+                    for (long kz = bz; kz < kzmax; kz++) {
+                        const long k = kx * _nz + kz;
+
+                        const Type V = _v[k];
+                        const Type B = _b[k];
+
+                        const Type factorV = + 2 * B / (V * V * V);
+                        const Type factorB = - 1 / (V * V);
+
+                        dVel[k]  += factorV * wavefieldDP[k] * _pOld[k];
+                        dBuoy[k] += factorB * wavefieldDP[k] * _pOld[k]
+                            - _tmpPx1[k] * _tmpPx2[k] - _tmpPz1[k] * _tmpPz2[k];
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Accumulate the Born image term at the current time for buoyancy only model-space
+     *
+     * User must have:
+     *   - called the nonlinear forward
+     *   - saved 2nd time derivative of pressure at corresponding time index in array dp2
+     *   - Born image term will be accumulated iu the _dm array
+     *
+     *   - velocity term: [+ 2B/V^3 LtP r                                 ]
+     *   - buoyancy  term: [- 1/V^2  LtP r - dx' P dx - dy' P dy - dz' P dz]
+     */
+template<class Type>
+#if defined(__FUNCTION_CLONES__)
+__attribute__((target_clones("avx","avx2","avx512f","default")))
+#endif
+    inline void adjointBornAccumulation_B(Type *dBuoy, Type *wavefieldP, Type *wavefieldDP) {
+
+        applyFirstDerivatives2D_PlusHalf(
+            _freeSurface, _nx, _nz, _nthread, _c8_1, _c8_2, _c8_3, _c8_4, _invDx, _invDz,
+            wavefieldP, wavefieldP, _tmpPx1, _tmpPz1, _nbx, _nbz);
+
+        applyFirstDerivatives2D_PlusHalf(
+            _freeSurface, _nx, _nz, _nthread, _c8_1, _c8_2, _c8_3, _c8_4, _invDx, _invDz,
+            _pOld, _pOld, _tmpPx2, _tmpPz2, _nbx, _nbz);
+
+#pragma omp parallel for num_threads(_nthread) schedule(static)
+        for (long bx = 0; bx < _nx; bx += _nbx) {
+            for (long bz = 0; bz < _nz; bz += _nbz) {
+                const long kxmax = MIN(bx + _nbx, _nx);
+                const long kzmax = MIN(bz + _nbz, _nz);
+
+                for (long kx = bx; kx < kxmax; kx++) {
+#pragma omp simd
+                    for (long kz = bz; kz < kzmax; kz++) {
+                        const long k = kx * _nz + kz;
+
+                        const Type V = _v[k];
+                        const Type B = _b[k];
+
+                        const Type factorB = - 1 / (V * V);
+
+                        dBuoy[k] += factorB * wavefieldDP[k] * _pOld[k] 
+                            - _tmpPx1[k] * _tmpPx2[k] - _tmpPz1[k] * _tmpPz2[k];
                     }
                 }
             }
@@ -735,30 +1038,6 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
 
                     pOld[k] = dt2V2_B * (dPx + dPz) - dtOmegaInvQ[k] * (pCur[k] - pOld[k]) - pOld[k] + 2 * pCur[k];
                     pSpace[k] = dPx + dPz;
-                }
-            }
-        }
-    }
-
-    /**
-     * Scale spatial derivatives by v^2/b to make them temporal derivs
-     */
-#if defined(__FUNCTION_CLONES__)
-__attribute__((target_clones("avx","avx2","avx512f","default")))
-#endif
-    inline void scaleSpatialDerivatives() {
-#pragma omp parallel for collapse(2) num_threads(_nthread) schedule(static)
-        for (long bx = 0; bx < _nx; bx += _nbx) {
-            for (long bz = 0; bz < _nz; bz += _nbz) {
-                const long kxmax = MIN(bx + _nbx, _nx);
-                const long kzmax = MIN(bz + _nbz, _nz);
-
-                for (long kx = bx; kx < kxmax; kx++) {
-#pragma omp simd
-                    for (long kz = bz; kz < kzmax; kz++) {
-                        const long k = kx * _nz + kz;
-                        _pSpace[k] *= _v[k] * _v[k] / _b[k];
-                    }
                 }
             }
         }

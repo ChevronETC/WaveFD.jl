@@ -60,34 +60,71 @@ for _f in (:V, :B, :PSpace, :PCur, :POld, :DtOmegaInvQ)
     @eval $(_f)(prop::Prop3DAcoIsoDenQ_DEO2_FDTD) = unsafe_wrap(Array, ccall(($symf, libprop3DAcoIsoDenQ_DEO2_FDTD), Ptr{Float32}, (Ptr{Cvoid},), prop.p), size(prop), own=false)
 end
 
+abstract type Prop3DAcoIsoDenQ_DEO2_FDTD_Model end
+struct Prop3DAcoIsoDenQ_DEO2_FDTD_Model_V <: Prop3DAcoIsoDenQ_DEO2_FDTD_Model end
+struct Prop3DAcoIsoDenQ_DEO2_FDTD_Model_B <: Prop3DAcoIsoDenQ_DEO2_FDTD_Model end
+struct Prop3DAcoIsoDenQ_DEO2_FDTD_Model_VB <: Prop3DAcoIsoDenQ_DEO2_FDTD_Model end
+
 propagateforward!(prop::Prop3DAcoIsoDenQ_DEO2_FDTD) = ccall((:Prop3DAcoIsoDenQ_DEO2_FDTD_TimeStep, libprop3DAcoIsoDenQ_DEO2_FDTD), Cvoid, (Ptr{Cvoid},), prop.p)
 propagateadjoint!(prop::Prop3DAcoIsoDenQ_DEO2_FDTD) = propagateforward!(prop) # self-adjoint
 
 scale_spatial_derivatives!(prop::Prop3DAcoIsoDenQ_DEO2_FDTD) =
     ccall((:Prop3DAcoIsoDenQ_DEO2_FDTD_ScaleSpatialDerivatives, libprop3DAcoIsoDenQ_DEO2_FDTD), Cvoid, (Ptr{Cvoid},), prop.p)
 
-function forwardBornInjection!(prop::Prop3DAcoIsoDenQ_DEO2_FDTD,dmodelv,wavefieldp)
-    ccall((:Prop3DAcoIsoDenQ_DEO2_FDTD_ForwardBornInjection, libprop3DAcoIsoDenQ_DEO2_FDTD), Cvoid,
+# v in model-space
+function forwardBornInjection!(prop::Prop3DAcoIsoDenQ_DEO2_FDTD, modeltype::Prop3DAcoIsoDenQ_DEO2_FDTD_Model_V, dmodel, wavefields)
+    ccall((:Prop3DAcoIsoDenQ_DEO2_FDTD_ForwardBornInjection_V, libprop3DAcoIsoDenQ_DEO2_FDTD), Cvoid,
         (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat}),
-         prop.p,     dmodelv,     wavefieldp)
+         prop.p,     dmodel["v"], wavefields["pspace"])
 end
 
-function adjointBornAccumulation!(prop::Prop3DAcoIsoDenQ_DEO2_FDTD,imagingcondition::ImagingConditionStandard,dmodelv,wavefieldp)
-    ccall((:Prop3DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation, libprop3DAcoIsoDenQ_DEO2_FDTD), Cvoid,
+# v,b in model-space
+function forwardBornInjection!(prop::Prop3DAcoIsoDenQ_DEO2_FDTD, modeltype::Prop3DAcoIsoDenQ_DEO2_FDTD_Model_VB, dmodel, wavefields)
+    ccall((:Prop3DAcoIsoDenQ_DEO2_FDTD_ForwardBornInjection_VB, libprop3DAcoIsoDenQ_DEO2_FDTD), Cvoid,
+        (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat}, Ptr{Cfloat},        Ptr{Cfloat}),
+         prop.p,     dmodel["v"], dmodel["b"], wavefields["pold"], wavefields["pspace"])
+end
+
+# b in model-space
+function forwardBornInjection!(prop::Prop3DAcoIsoDenQ_DEO2_FDTD, modeltype::Prop3DAcoIsoDenQ_DEO2_FDTD_Model_B, dmodel, wavefields)
+    ccall((:Prop3DAcoIsoDenQ_DEO2_FDTD_ForwardBornInjection_B, libprop3DAcoIsoDenQ_DEO2_FDTD), Cvoid,
+        (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat},        Ptr{Cfloat}),
+         prop.p,     dmodel["b"], wavefields["pold"], wavefields["pspace"])
+end
+
+# v in model-space
+function adjointBornAccumulation!(prop::Prop3DAcoIsoDenQ_DEO2_FDTD, modeltype::Prop3DAcoIsoDenQ_DEO2_FDTD_Model_V, imagingcondition::ImagingConditionStandard, dmodel, wavefields)
+    ccall((:Prop3DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_V, libprop3DAcoIsoDenQ_DEO2_FDTD), Cvoid,
         (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat}),
-         prop.p,     dmodelv,     wavefieldp)
+         prop.p,     dmodel["v"], wavefields["pspace"])
 end
 
-function adjointBornAccumulation!(prop::Prop3DAcoIsoDenQ_DEO2_FDTD,imagingcondition::ImagingConditionWaveFieldSeparationFWI,dmodelv,wavefieldp)
-    ccall((:Prop3DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_wavefieldsep, libprop3DAcoIsoDenQ_DEO2_FDTD), Cvoid,
-        (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat}, Clong),
-         prop.p,     dmodelv,     wavefieldp,  1)
+# v,b in model-space
+function adjointBornAccumulation!(prop::Prop3DAcoIsoDenQ_DEO2_FDTD, modeltype::Prop3DAcoIsoDenQ_DEO2_FDTD_Model_VB, imagingcondition::ImagingConditionStandard, dmodel, wavefields)
+    ccall((:Prop3DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_VB, libprop3DAcoIsoDenQ_DEO2_FDTD), Cvoid,
+        (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat}, Ptr{Cfloat},        Ptr{Cfloat}),
+         prop.p,     dmodel["v"], dmodel["b"], wavefields["pold"], wavefields["pspace"])
 end
 
-function adjointBornAccumulation!(prop::Prop3DAcoIsoDenQ_DEO2_FDTD,imagingcondition::ImagingConditionWaveFieldSeparationRTM,dmodelv,wavefieldp)
+# b in model-space
+function adjointBornAccumulation!(prop::Prop3DAcoIsoDenQ_DEO2_FDTD, modeltype::Prop3DAcoIsoDenQ_DEO2_FDTD_Model_B, imagingcondition::ImagingConditionStandard, dmodel, wavefields)
+    ccall((:Prop3DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_B, libprop3DAcoIsoDenQ_DEO2_FDTD), Cvoid,
+        (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat},        Ptr{Cfloat}),
+         prop.p,     dmodel["b"], wavefields["pold"], wavefields["pspace"])
+end
+
+# v in model-space with FWI wavefield separation
+function adjointBornAccumulation!(prop::Prop3DAcoIsoDenQ_DEO2_FDTD, modeltype::Prop3DAcoIsoDenQ_DEO2_FDTD_Model_V, imagingcondition::ImagingConditionWaveFieldSeparationFWI, dmodel, wavefields)
     ccall((:Prop3DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_wavefieldsep, libprop3DAcoIsoDenQ_DEO2_FDTD), Cvoid,
-        (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat}, Clong),
-         prop.p,     dmodelv,     wavefieldp,  0)
+        (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat},          Clong),
+         prop.p,     dmodel["v"], wavefields["pspace"], 1)
+end
+
+# v in model-space with RTM wavefield separation
+function adjointBornAccumulation!(prop::Prop3DAcoIsoDenQ_DEO2_FDTD, modeltype::Prop3DAcoIsoDenQ_DEO2_FDTD_Model_V, imagingcondition::ImagingConditionWaveFieldSeparationRTM, dmodel, wavefields)
+    ccall((:Prop3DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_wavefieldsep, libprop3DAcoIsoDenQ_DEO2_FDTD), Cvoid,
+        (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat},         Clong),
+        prop.p,     dmodel["v"], wavefields["pspace"], 0)
 end
 
 function show(io::IO, prop::Prop3DAcoIsoDenQ_DEO2_FDTD)
