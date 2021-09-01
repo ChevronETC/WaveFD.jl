@@ -16,9 +16,13 @@ function testme(nthreads::Int64)
     WaveFD.POld(p) .= 0;
 
     # @code_warntype WaveFD.propagateforward!(p);
-
+    
     t = @elapsed for kt = 1:nt
         WaveFD.propagateforward!(p)
+        
+        # source injection 
+        ksz, ksx = div(nz,2)+1, div(nx,2)+1
+        WaveFD.PCur(p)[ksz,ksx] += dt^2 * WaveFD.V(p)[ksz,ksx]^2 / WaveFD.B(p)[ksz,ksx];
     end
     mc  = nx * nz * nt / (1000 * 1000)
     mcs = mc / t
