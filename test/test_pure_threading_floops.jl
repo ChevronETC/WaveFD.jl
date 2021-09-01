@@ -1,4 +1,4 @@
-using Polyester, Printf, BenchmarkTools, LoopVectorization
+using Polyester, Printf, BenchmarkTools, LoopVectorization, FLoops
 
 mutable struct PureJulia2DAcoIsoDenQ_DEO2_FDTD
     nz::Int64
@@ -46,7 +46,7 @@ function PureJulia2DAcoIsoDenQ_DEO2_FDTD(; nz, nx, nbz_cache, nbx_cache, dz, dx,
     PureJulia2DAcoIsoDenQ_DEO2_FDTD(nz, nx, nbz_cache, nbx_cache, dz, dx, dt, c8_1, c8_2, c8_3, c8_4, V, B, PSpace, PCur, POld, TmpPx, TmpPz)
 end
 
-@inline function block_first_touch_timestep!(p::PureJulia2DAcoIsoDenQ_DEO2_FDTD, izrng, ixrng, v0, b0)
+function block_first_touch_timestep!(p::PureJulia2DAcoIsoDenQ_DEO2_FDTD, izrng, ixrng, v0, b0)
     for kx in ixrng
         @turbo for kz in izrng
             p.V[kz,kx] = v0
@@ -61,7 +61,7 @@ end
     nothing
 end
 
-@inline function block_applyFirstDerivatives2D_PlusHalf_Sandwich!(p::PureJulia2DAcoIsoDenQ_DEO2_FDTD, izrng, ixrng)
+function block_applyFirstDerivatives2D_PlusHalf_Sandwich!(p::PureJulia2DAcoIsoDenQ_DEO2_FDTD, izrng, ixrng)
     invDz = 1f0 / p.dz
     invDx = 1f0 / p.dx
 
@@ -86,7 +86,7 @@ end
     nothing
 end
 
-@inline function block_applyFirstDerivatives2D_MinusHalf_TimeUpdate_Nonlinear!(p::PureJulia2DAcoIsoDenQ_DEO2_FDTD, izrng, ixrng)
+function block_applyFirstDerivatives2D_MinusHalf_TimeUpdate_Nonlinear!(p::PureJulia2DAcoIsoDenQ_DEO2_FDTD, izrng, ixrng)
     invDz = 1f0 / p.dz
     invDx = 1f0 / p.dx
 
@@ -116,32 +116,23 @@ end
     nothing
 end
 
-@inline function first_touch!(p::PureJulia2DAcoIsoDenQ_DEO2_FDTD, v0, b0)
-    for iz in 5:p.nbz_cache:p.nz-4
-        Threads.@threads for ix in 5:p.nbx_cache:p.nx-4
-            block_first_touch_timestep!(p, iz:min(p.nz-4,iz+p.nbz_cache-1), ix:min(p.nx-4,ix+p.nbx_cache-1), v0, b0)
-        end
-    end
-    nothing
-end
-
-@inline function zero_annulus!(p::PureJulia2DAcoIsoDenQ_DEO2_FDTD)
+function zero_annulus!(p::PureJulia2DAcoIsoDenQ_DEO2_FDTD)
     for k = 1:4
         @turbo for kx = 1:p.nz
             p.TmpPx[k,kx] = 0
             p.TmpPz[k,kx] = 0
             p.PSpace[k,kx] = 0
-
+            
             p.TmpPx[p.nz-k+1,kx] = 0
             p.TmpPz[p.nz-k+1,kx] = 0
             p.PSpace[p.nz-k+1,kx] = 0
         end
-
+        
         @turbo for kz = 1:p.nx
             p.TmpPx[kz,k] = 0
             p.TmpPz[kz,k] = 0
             p.PSpace[kz,k] = 0
-
+            
             p.TmpPx[kz,p.nx-k+1] = 0
             p.TmpPz[kz,p.nx-k+1] = 0
             p.PSpace[kz,p.nx-k+1] = 0
@@ -150,9 +141,18 @@ end
     nothing
 end
 
-@inline function applyFirstDerivatives2D_PlusHalf_Sandwich!(p::PureJulia2DAcoIsoDenQ_DEO2_FDTD)
+function first_touch!(p::PureJulia2DAcoIsoDenQ_DEO2_FDTD, v0, b0)
     for iz in 5:p.nbz_cache:p.nz-4
-        Threads.@threads for ix in 5:p.nbx_cache:p.nx-4
+        @floop ThreadedEx() for ix in 5:p.nbx_cache:p.nx-4
+            block_first_touch_timestep!(p, iz:min(p.nz-4,iz+p.nbz_cache-1), ix:min(p.nx-4,ix+p.nbx_cache-1), v0, b0)
+        end
+    end
+    nothing
+end
+
+function applyFirstDerivatives2D_PlusHalf_Sandwich!(p::PureJulia2DAcoIsoDenQ_DEO2_FDTD)
+    for iz in 5:p.nbz_cache:p.nz-4
+        @floop ThreadedEx() for ix in 5:p.nbx_cache:p.nx-4
             block_applyFirstDerivatives2D_PlusHalf_Sandwich!(p, 
                 iz:min(p.nz-4,iz+p.nbz_cache-1), ix:min(p.nx-4,ix+p.nbx_cache-1))
         end
@@ -160,9 +160,9 @@ end
     nothing
 end
 
-@inline function applyFirstDerivatives2D_MinusHalf_TimeUpdate_Nonlinear!(p::PureJulia2DAcoIsoDenQ_DEO2_FDTD)
+function applyFirstDerivatives2D_MinusHalf_TimeUpdate_Nonlinear!(p::PureJulia2DAcoIsoDenQ_DEO2_FDTD)
     for iz in 5:p.nbz_cache:p.nz-4
-        Threads.@threads for ix in 5:p.nbx_cache:p.nx-4
+        @floop ThreadedEx() for ix in 5:p.nbx_cache:p.nx-4
             block_applyFirstDerivatives2D_MinusHalf_TimeUpdate_Nonlinear!(p, 
                 iz:min(p.nz-4,iz+p.nbz_cache-1), ix:min(p.nx-4,ix+p.nbx_cache-1))
         end
@@ -170,7 +170,7 @@ end
     nothing
 end
 
-@inline function propagateforward!(p::PureJulia2DAcoIsoDenQ_DEO2_FDTD)
+function propagateforward!(p::PureJulia2DAcoIsoDenQ_DEO2_FDTD)
     applyFirstDerivatives2D_PlusHalf_Sandwich!(p)
     applyFirstDerivatives2D_MinusHalf_TimeUpdate_Nonlinear!(p)
     
@@ -182,7 +182,7 @@ end
 end
 
 function testme()
-    nt = 500
+    nt = 5000
     nx = 2001
     nz = 2001
     nbx_cache = 8
@@ -201,9 +201,11 @@ function testme()
     end
 
     # timing
+    @show "begin"
     t = @elapsed for kt = 1:nt
         propagateforward!(p)
     end
+    @show "end"
 
     set_zero_subnormals(false)
 

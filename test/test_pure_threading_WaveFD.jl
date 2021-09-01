@@ -27,6 +27,7 @@ function testme(nthreads::Int64)
         ksz, ksx = div(nz,2)+1, div(nx,2)+1
         WaveFD.PCur(p)[ksz,ksx] += dt^2 * WaveFD.V(p)[ksz,ksx]^2 / WaveFD.B(p)[ksz,ksx];
     end
+    
     mc  = nx * nz * nt / (1000 * 1000)
     mcs = mc / t
 
