@@ -1,7 +1,7 @@
 using WaveFD, Printf
 
 function testme(nthreads::Int64)
-    nt = 100
+    nt = 500
     nx = 2001
     nz = 2001
     nbx_cache = 8
@@ -15,7 +15,10 @@ function testme(nthreads::Int64)
     WaveFD.PCur(p) .= 0;
     WaveFD.POld(p) .= 0;
 
-    # @code_warntype WaveFD.propagateforward!(p);
+    # warmup
+    for kt = 1:2
+        WaveFD.propagateforward!(p)
+    end
     
     t = @elapsed for kt = 1:nt
         WaveFD.propagateforward!(p)
@@ -27,13 +30,9 @@ function testme(nthreads::Int64)
     mc  = nx * nz * nt / (1000 * 1000)
     mcs = mc / t
 
-    @printf("nthreads,time,mcells,mcells/sec; %3d %12.4f %12.4f %12.4f\n", nthreads, t, mc, mcs)
-
-    # @show extrema(p.PCur)
-    # @show extrema(p.POld)
-    # @show extrema(p.PSpace)
+    @printf("%3d %12.4f\n", nthreads, mcs)
 end
 
-for k = 0:4:44
+for k = 44:-4:0
     testme(max(k,1))
 end
