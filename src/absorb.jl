@@ -452,15 +452,15 @@ function absorb(c33::Array{T,3}, den::Array{T,3}, nz::Int64, ny::Int64, nx::Int6
     return abc
 end
 
-# 2018.01.26 JKW will test various version of @Threads, @inbounds, @simd
-# TODO test AbstractArray vs Array in the interest of performance optimization
-# function setup_q_profile!{T<:Union{Float32,Float64}}(w_inv_q::AbstractArray{T,2},
-function setup_q_profile_serial!(w_inv_q::Array{T,2},
-        freesurface::Bool, nsponge::Int64, q_freq::T, q_min::T, q_interior::T) where T<:Float32
+# TODO: 3D equivalent operators
+# TODO: timing for threaded ops in 3D 
+# TODO: should we use LoopVectorization.jl ?
+
+function setup_q_profile_2D_serial!(w_inv_q::Array{T,2}, freesurface::Bool, nsponge::Int64, 
+        dt::T, q_freq::T, q_min::T, q_interior::T) where T<:Float32
     nz,nx = size(w_inv_q)
     lqmin = log(q_min)
     lqmax = log(q_interior)
-    two_pi_f = 2.0 * π * q_freq
     qprof = zeros(Float32, nsponge)
 
     for ksponge = 1:nsponge
@@ -470,29 +470,29 @@ function setup_q_profile_serial!(w_inv_q::Array{T,2},
     end
 
     for kz = 1:nz
+        ksz = (freesurface) ? (nz - 1 - (kz - 1)) : min((kz - 1), (nz - 1 - (kz - 1)))
+        
         for kx = 1:nx
-            ksz = (freesurface) ? (nz - 1 - (kz - 1)) : min((kz - 1), (nz - 1 - (kz - 1)))
-            ksx = min((kx - 1), (nx - 1 - ((kx - 1) - 1)))
+            ksx = min((kx - 1),   (nx - 1 - (kx - 1)))
             ksponge = min(ksx, ksz) + 1 # add one to get back to julia indexing
-            w_inv_q[kz,kx] = T((two_pi_f / q_interior))
+            @inbounds w_inv_q[kz,kx] = (dt * 2.0 * π * q_freq / q_interior)
             if ksponge ∈ 1:nsponge
-                w_inv_q[kz,kx] = T(two_pi_f / qprof[ksponge])
+                @inbounds w_inv_q[kz,kx] = dt * 2.0 * π * q_freq / qprof[ksponge]
             end
         end
     end
 end
 
-# threaded version: thanks to Sam for figuring out how to do this hack to make threading work
-function setup_q_profile_threaded!(w_inv_q::Array{T,2},
-        freesurface, nsponge::Int64, q_freq::T, q_min::T, q_interior::T) where T<:Float32
+function setup_q_profile_2D_threaded!(w_inv_q::Array{T,2}, freesurface, nsponge::Int64, 
+        dt::T, q_freq::T, q_min::T, q_interior::T) where T<:Float32
 
     function make_qprof(nsponge::Int64, q_min::T, q_interior::T) where T<:Float32
-        qprof = zeros(Float32, nsponge)
         lqmin = log(q_min)
         lqmax = log(q_interior)
+        qprof = zeros(Float32, nsponge)
 
         @threads for ksponge = 1:nsponge
-            dk = (ksponge - one(T)) / (nsponge - one(T))
+            dk = (ksponge - 1) / (nsponge - 1)
             lq = lqmin + dk * (lqmax - lqmin)
             @inbounds qprof[ksponge] = exp(lq)
         end
@@ -504,14 +504,15 @@ function setup_q_profile_threaded!(w_inv_q::Array{T,2},
         nz,nx = size(w_inv_q)
         two_pi_f = T(2.0 * π * q_freq)
 
-        @threads for kx = 1:nx
-            for kz = 1:nz
-                ksz = (freesurface) ? (nz - 1 - (kz - 1)) : min((kz - 1), (nz - 1 - (kz - 1)))
-                ksx = min((kx - 1), (nx - 1 - ((kx - 1) - 1)))
+        @threads for kz = 1:nz
+            ksz = (freesurface) ? (nz - 1 - (kz - 1)) : min((kz - 1), (nz - 1 - (kz - 1)))
+            
+            for kx = 1:nx
+                ksx = min((kx - 1),   (nx - 1 - (kx - 1)))
                 ksponge = min(ksx, ksz) + 1 # add one to get back to julia indexing
-                @inbounds w_inv_q[kz,kx] = two_pi_f / q_interior
+                @inbounds w_inv_q[kz,kx] = dt * 2.0 * π * q_freq / q_interior
                 if ksponge ∈ 1:nsponge
-                    @inbounds w_inv_q[kz,kx] = two_pi_f / qprof[ksponge]
+                    @inbounds w_inv_q[kz,kx] = dt * 2.0 * π * q_freq / qprof[ksponge]
                 end
             end
         end
