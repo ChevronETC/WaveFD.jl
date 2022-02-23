@@ -18,12 +18,12 @@ WaveFD_jll = "c8b78e2a-5255-5058-b631-96af8a7e9abf"
 
 [compat]
 CvxCompress = "1"
-DSP = "0.6"
+DSP = "0.7"
 DistributedArrays = "0.6"
 FFTW = "1"
 NearestNeighbors = "0.4"
-SpecialFunctions = "0.10, 1.0"
-StaticArrays = "0.12, 1.0"
+SpecialFunctions = "0.10, 1.0, 2"
+StaticArrays = "0.12, 1"
 WaveFD_jll = "0.3"
 julia = "1"
 
