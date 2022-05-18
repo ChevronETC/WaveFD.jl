@@ -65,4 +65,37 @@ end
     @test w1 ≈ w2
 end
 
+
+@testset "2D, unphysical q values result in array set to zero, freesurface=$(freesurface)" for freesurface in (false,true)
+    qMin = 0f0
+    qInterior = 0f0
+    w1 = ones(Float32,nz,nx)
+    w2 = ones(Float32,nz,nx)
+    w3 = ones(Float32,nz,nx)
+    WaveFD.setup_q_profile_2D_serial!(w1, freesurface, nsponge, dtmod, freqQ, qMin, qInterior)
+    WaveFD.setup_q_profile_2D_threaded!(w2, freesurface, nsponge, dtmod, freqQ, qMin, qInterior)
+    w3 .= WaveFD.DtOmegaInvQ(Prop2DAcoIsoDenQ_DEO2_FDTD(;
+        freesurface=freesurface, nz=nz, nx=nx, dz=dz, dx=dx, nsponge=nsponge, nthreads=nthreads,
+        dt=dtmod, freqQ=freqQ, qMin=qMin, qInterior=qInterior))
+    for w in (w1, w2, w3)
+        @test w ≈ zeros(Float32,nz,nx)
+    end
+end
+
+@testset "3D, unphysical q values result in array set to zero, freesurface=$(freesurface)" for freesurface in (false,true)
+    qMin = 0f0
+    qInterior = 0f0
+    w1 = ones(Float32,nz,ny,nx)
+    w2 = ones(Float32,nz,ny,nx)
+    w3 = ones(Float32,nz,ny,nx)
+    WaveFD.setup_q_profile_3D_serial!(w1, freesurface, nsponge, dtmod, freqQ, qMin, qInterior)
+    WaveFD.setup_q_profile_3D_threaded!(w2, freesurface, nsponge, dtmod, freqQ, qMin, qInterior)
+    w3 .= WaveFD.DtOmegaInvQ(Prop3DAcoIsoDenQ_DEO2_FDTD(;
+            freesurface=freesurface, nz=nz, ny=ny, nx=nx, dz=dz, dy=dy, dx=dx, nsponge=nsponge, nthreads=nthreads,
+            dt=dtmod, freqQ=freqQ, qMin=qMin, qInterior=qInterior))
+    for w in (w1, w2, w3)
+        @test w ≈ zeros(Float32,nz,ny,nx)
+    end
+end
+
 nothing
