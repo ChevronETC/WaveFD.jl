@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <complex.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define PI 3.1415926535897
 #define MIN(x,y) ((x)<(y)?(x):(y))
@@ -37,7 +38,12 @@ void setupDtOmegaInvQ_2D(
         perror(msg);
         exit(EXIT_FAILURE);
     }
-
+    // check for unphysical q values
+    if ((qMin < FLT_EPSILON) && (qInterior < FLT_EPSILON)) {
+        printf("Warning -- qMin and qMax unphysical, dtOmegaInvQ set to zero!\n");
+        memset(dtOmegaInvQ, 0, sizeof(dtOmegaInvQ));
+        return;
+    }
     float *qprof = new float[nsponge];
 
     const double lqmin = log(qMin);
@@ -95,7 +101,12 @@ void setupDtOmegaInvQ_3D(
         perror(msg);
         exit(EXIT_FAILURE);
     }
-
+    // check for unphysical q values
+    if ((qMin < FLT_EPSILON) && (qInterior < FLT_EPSILON)) {
+        printf("Warning -- qMin and qMax unphysical, dtOmegaInvQ set to zero!\n");
+        memset(dtOmegaInvQ, 0, sizeof(dtOmegaInvQ));
+        return;
+    }
     const long nynz = ny * nz;
 
     float *qprof = new float[nsponge];

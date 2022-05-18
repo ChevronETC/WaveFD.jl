@@ -1,4 +1,5 @@
 for filename in (
+        "absorb.jl",
         "compressedio.jl",
         "imgcondition.jl",
         "spacetime.jl",
