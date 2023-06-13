@@ -140,7 +140,7 @@ function adjointBornAccumulation!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD, modeltype::P
     # value of 0.0 keeps standard IC.  
     ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_wavefieldsep, libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid,
     (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat},      Clong, Cfloat),
-     prop.p,     dmodel["v"], wavefields["pspace"], 0, -RTM_weight)
+     prop.p,     dmodel["v"], wavefields["pspace"], 1, -RTM_weight)
  end
 
 function show(io::IO, prop::Prop2DAcoIsoDenQ_DEO2_FDTD)
