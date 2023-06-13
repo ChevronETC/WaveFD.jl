@@ -90,7 +90,7 @@ end
 function adjointBornAccumulation!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD, modeltype::Prop2DAcoIsoDenQ_DEO2_FDTD_Model_V, imagingcondition::ImagingConditionStandard, dmodel, wavefields)
     ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_V, libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid,
         (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat},          Cfloat),
-         prop.p,     dmodel["v"], wavefields["pspace"], 1.0f0),
+         prop.p,     dmodel["v"], wavefields["pspace"], 1.0f0)
 end
 
 # v,b in model-space
