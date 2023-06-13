@@ -108,17 +108,29 @@ function adjointBornAccumulation!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD, modeltype::P
 end
 
 # v in model-space with FWI wavefield separation
-function adjointBornAccumulation!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD, modeltype::Prop2DAcoIsoDenQ_DEO2_FDTD_Model_V, imagingcondition::ImagingConditionWaveFieldSeparationFWI, dmodel, wavefields)
+function adjointBornAccumulation!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD, modeltype::Prop2DAcoIsoDenQ_DEO2_FDTD_Model_V, imagingcondition::ImagingConditionWaveFieldSeparationFWI, RTM_weight::Real, dmodel, wavefields)
     ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_wavefieldsep, libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid,
         (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat},      Clong),
-         prop.p,     dmodel["v"], wavefields["pspace"], 1)
+         prop.p,     dmodel["v"], wavefields["pspace"], 1, 1.0f0 - RTM_weight)
  end
 
 # v in model-space with RTM wavefield separation
-function adjointBornAccumulation!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD, modeltype::Prop2DAcoIsoDenQ_DEO2_FDTD_Model_V, imagingcondition::ImagingConditionWaveFieldSeparationRTM, dmodel, wavefields)
+function adjointBornAccumulation!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD, modeltype::Prop2DAcoIsoDenQ_DEO2_FDTD_Model_V, imagingcondition::ImagingConditionWaveFieldSeparationRTM, RTM_weight::Real, dmodel, wavefields)
     ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_wavefieldsep, libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid,
         (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat},      Clong),
-         prop.p,     dmodel["v"], wavefields["pspace"], 0)
+         prop.p,     dmodel["v"], wavefields["pspace"], 0, RTM_weight)
+ end
+
+# v in model-space with MIX wavefield separation 
+function adjointBornAccumulation!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD, modeltype::Prop2DAcoIsoDenQ_DEO2_FDTD_Model_V, imagingcondition::ImagingConditionWaveFieldSeparationMIX, RTM_weight::Real, dmodel, wavefields)
+    # Long wavelength model updating (FWI IC)
+    ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_wavefieldsep, libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid,
+    (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat},      Clong),
+     prop.p,     dmodel["v"], wavefields["pspace"], 1, 1.0f0 - RTM_weight)
+    # Short wavelength model updating (RTM IC)
+    ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_wavefieldsep, libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid,
+        (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat},      Clong),
+         prop.p,     dmodel["v"], wavefields["pspace"], 0, RTM_weight)
  end
 
 function show(io::IO, prop::Prop2DAcoIsoDenQ_DEO2_FDTD)
