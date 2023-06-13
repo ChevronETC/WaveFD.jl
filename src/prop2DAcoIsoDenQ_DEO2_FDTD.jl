@@ -146,7 +146,7 @@ function adjointBornAccumulation!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD, modeltype::P
     weigthAll = 1.0f0 - RTM_weight
 
      ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_V, libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid,
-     (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat}          Cfloat),
+     (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat},          Cfloat),
       prop.p,     dmodel["v"], wavefields["pspace"], weightAll)
      # Substract long wavelength updates to put more emphasis on short wavelengths, value of 1 for RTM_weight removes all long wavelength, 
      # value of 0.0 keeps standard IC.  
