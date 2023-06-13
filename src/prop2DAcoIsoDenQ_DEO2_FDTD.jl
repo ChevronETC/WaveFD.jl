@@ -143,7 +143,7 @@ function adjointBornAccumulation!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD, modeltype::P
     #  prop.p,     dmodel["v"], wavefields["pspace"], 1, -RTM_weight)
 
     weightShort = 2.0f0*RTM_weight - 1.0f0
-    weigthAll = 1.0f0 - RTM_weight
+    weightAll = 1.0f0 - RTM_weight
 
      ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_V, libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid,
      (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat},          Cfloat),
