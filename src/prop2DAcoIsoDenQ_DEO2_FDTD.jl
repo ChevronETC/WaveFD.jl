@@ -124,13 +124,23 @@ function adjointBornAccumulation!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD, modeltype::P
 # v in model-space with MIX wavefield separation 
 function adjointBornAccumulation!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD, modeltype::Prop2DAcoIsoDenQ_DEO2_FDTD_Model_V, imagingcondition::ImagingConditionWaveFieldSeparationMIX, RTM_weight::Real, dmodel, wavefields)
     # Long wavelength model updating (FWI IC)
+    # ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_wavefieldsep, libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid,
+    # (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat},      Clong, Cfloat),
+    #  prop.p,     dmodel["v"], wavefields["pspace"], 1, 1.0f0 - RTM_weight)
+    # # Short wavelength model updating (RTM IC)
+    # ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_wavefieldsep, libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid,
+    #     (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat},      Clong, Cfloat),
+    #      prop.p,     dmodel["v"], wavefields["pspace"], 0, RTM_weight)
+
+    # Compute imaging condition with all wavelengths equally balanced 
+    ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_V, libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid,
+    (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat}),
+     prop.p,     dmodel["v"], wavefields["pspace"])
+    # Substract long wavelength updates to put more emphasis on short wavelengths, value of 1 for RTM_weight removes all long wavelength, 
+    # value of 0.0 keeps standard IC.  
     ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_wavefieldsep, libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid,
     (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat},      Clong, Cfloat),
-     prop.p,     dmodel["v"], wavefields["pspace"], 1, 1.0f0 - RTM_weight)
-    # Short wavelength model updating (RTM IC)
-    ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_wavefieldsep, libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid,
-        (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat},      Clong, Cfloat),
-         prop.p,     dmodel["v"], wavefields["pspace"], 0, RTM_weight)
+     prop.p,     dmodel["v"], wavefields["pspace"], 0, -RTM_weight)
  end
 
 function show(io::IO, prop::Prop2DAcoIsoDenQ_DEO2_FDTD)
