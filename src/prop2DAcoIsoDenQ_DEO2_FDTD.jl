@@ -124,15 +124,21 @@ function adjointBornAccumulation!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD, modeltype::P
 # v in model-space with MIX wavefield separation 
 function adjointBornAccumulation!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD, modeltype::Prop2DAcoIsoDenQ_DEO2_FDTD_Model_V, imagingcondition::ImagingConditionWaveFieldSeparationMIX, RTM_weight::Real, dmodel, wavefields)
 
+    dmodel_temp = similar(dmodel["v"])
+    dmodel_temp .= 0.
+
     # FWI IC 
-    # ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_wavefieldsep, libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid,
-    #  (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat},          Clong, Cfloat),
-    #   prop.p,     dmodel["v"], wavefields["pspace"], 1,     1.0f0-RTM_weight)
+    ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_wavefieldsep, libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid,
+     (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat},          Clong, Cfloat),
+      prop.p,     dmodel_temp, wavefields["pspace"], 1,     1.0f0-RTM_weight)
     # RTM IC 
+    dmodel["v"] .+= dmodel_temp
+    dmodel_temp .= 0. 
     ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_wavefieldsep, libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid,
      (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat},      Clong, Cfloat),
       prop.p,     dmodel["v"], wavefields["pspace"], 0, RTM_weight)
 
+    dmodel["v"] .+= dmodel_temp
 
  end
 
