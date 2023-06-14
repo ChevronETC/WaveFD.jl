@@ -136,7 +136,7 @@ function adjointBornAccumulation!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD, modeltype::P
     dmodel_temp .= 0. 
     ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_wavefieldsep, libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid,
      (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat},      Clong, Cfloat),
-      prop.p,     dmodel["v"], wavefields["pspace"], 0, RTM_weight)
+      prop.p,     dmodel_temp, wavefields["pspace"], 0, RTM_weight)
 
     dmodel["v"] .+= dmodel_temp
 
