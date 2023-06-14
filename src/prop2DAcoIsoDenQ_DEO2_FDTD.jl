@@ -125,10 +125,10 @@ function adjointBornAccumulation!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD, modeltype::P
 function adjointBornAccumulation!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD, modeltype::Prop2DAcoIsoDenQ_DEO2_FDTD_Model_V, imagingcondition::ImagingConditionWaveFieldSeparationMIX, RTM_weight::Real, dmodel, wavefields)
 
     dmodel_FWI = similar(dmodel["v"])
-    dmodel_FWI .= 0.
+    dmodel_FWI .= dmodel["v"].
 
     dmodel_RTM = similar(dmodel["v"])
-    dmodel_RTM .= 0.
+    dmodel_RTM .= dmodel["v"]
 
     # FWI IC 
     ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_wavefieldsep, libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid,
