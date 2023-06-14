@@ -581,7 +581,7 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
 #if defined(__FUNCTION_CLONES__)
 __attribute__((target_clones("avx","avx2","avx512f","default")))
 #endif
-    inline void adjointBornAccumulation_wavefieldsep(float *dVel, float *wavefieldDP, const long isFWI, const float RTM_weight) {
+    inline void adjointBornAccumulation_wavefieldsep(float *dVel, float *wavefieldDP, const long isFWI, const float ic_weight) {
         const long nfft = 2 * _nz;
         const float scale = 1.0f / (float)(nfft);
 
@@ -656,8 +656,8 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
                         const long k = kx * _nz + kz;
                         const float V = _v[k];
                         const float B = _b[k];
-                        const float factor = 2 * B / (V * V * V);
-                        dVel[k] += RTM_weight * (factor * real(tmp_nlf[kz] * tmp_adj[kz]));
+                        const float factor = 2 * B / (V * V * V) * ic_weight;
+                        dVel[k] +=  factor * real(tmp_nlf[kz] * tmp_adj[kz]);
                     }
 
                 } // end loop over kx

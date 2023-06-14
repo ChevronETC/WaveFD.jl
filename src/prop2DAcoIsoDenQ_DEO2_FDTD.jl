@@ -142,17 +142,28 @@ function adjointBornAccumulation!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD, modeltype::P
     # (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat},      Clong, Cfloat),
     #  prop.p,     dmodel["v"], wavefields["pspace"], 1, -RTM_weight)
 
-    weightShort = 2.0f0*RTM_weight - 1.0f0
-    weightAll = 1.0f0 - RTM_weight
+    # weightShort = 2.0f0*RTM_weight - 1.0f0
+    # weightAll = 1.0f0 - RTM_weight
 
-     ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_V, libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid,
-     (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat},          Cfloat),
-      prop.p,     dmodel["v"], wavefields["pspace"], weightAll)
-     # Substract long wavelength updates to put more emphasis on short wavelengths, value of 1 for RTM_weight removes all long wavelength, 
-     # value of 0.0 keeps standard IC.  
-     ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_wavefieldsep, libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid,
+    #  ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_V, libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid,
+    #  (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat},          Cfloat),
+    #   prop.p,     dmodel["v"], wavefields["pspace"], weightAll)
+    #  # Substract long wavelength updates to put more emphasis on short wavelengths, value of 1 for RTM_weight removes all long wavelength, 
+    #  # value of 0.0 keeps standard IC.  
+    #  ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_wavefieldsep, libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid,
+    #  (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat},      Clong, Cfloat),
+    #   prop.p,     dmodel["v"], wavefields["pspace"], 0, weightShort)
+
+    # FWI IC 
+    ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_wavefieldsep, libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid,
+     (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat},          Clong, Cfloat),
+      prop.p,     dmodel["v"], wavefields["pspace"], 1,     1.0f0-RTM_weight)
+    # RTM IC 
+    ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_wavefieldsep, libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid,
      (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat},      Clong, Cfloat),
-      prop.p,     dmodel["v"], wavefields["pspace"], 0, weightShort)
+      prop.p,     dmodel["v"], wavefields["pspace"], 0, RTM_weight)
+
+
  end
 
 function show(io::IO, prop::Prop2DAcoIsoDenQ_DEO2_FDTD)
