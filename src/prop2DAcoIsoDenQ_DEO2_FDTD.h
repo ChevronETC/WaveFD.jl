@@ -441,7 +441,7 @@ template<class Type>
 #if defined(__FUNCTION_CLONES__)
 __attribute__((target_clones("avx","avx2","avx512f","default")))
 #endif
-    inline void adjointBornAccumulation_V(Type *dVel, Type *wavefieldDP, const float ic_weight) {
+    inline void adjointBornAccumulation_V(Type *dVel, Type *wavefieldDP) {
 
 #pragma omp parallel for num_threads(_nthread) schedule(static)
         for (long bx = 0; bx < _nx; bx += _nbx) {
@@ -459,7 +459,7 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
 
                         const Type factorV = + 2 * B / (V * V * V);
 
-                        dVel[k]  += ic_weight * (factorV * wavefieldDP[k] * _pOld[k]);
+                        dVel[k]  += (factorV * wavefieldDP[k] * _pOld[k]);
                     }
                 }
             }
