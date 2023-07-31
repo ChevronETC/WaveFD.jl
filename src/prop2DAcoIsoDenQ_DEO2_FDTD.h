@@ -671,7 +671,7 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
         fftwf_destroy_plan(planInverse);
     }
 
-# mix 
+// mix 
 #if defined(__FUNCTION_CLONES__)
 __attribute__((target_clones("avx","avx2","avx512f","default")))
 #endif
