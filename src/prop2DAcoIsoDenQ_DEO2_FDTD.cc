@@ -67,9 +67,9 @@ void Prop2DAcoIsoDenQ_DEO2_FDTD_ForwardBornInjection_B(
 }
 
 void Prop2DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_V(
-        void *p, float *dVel, float *wavefieldDP) {
+        void *p, float *dVel, float *wavefieldDP, const float weight) {
     Prop2DAcoIsoDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop2DAcoIsoDenQ_DEO2_FDTD *>(p);
-    pc->adjointBornAccumulation_V(dVel, wavefieldDP);
+    pc->adjointBornAccumulation_V(dVel, wavefieldDP, weight);
 }
 
 void Prop2DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_VB(
@@ -85,9 +85,9 @@ void Prop2DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_B(
 }
 
 void Prop2DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_wavefieldsep(
-        void *p, float *dVel, float *wavefieldDP, const long isFWI) {
+        void *p, float *dVel, float *wavefieldDP, const long isFWI, const float weight) {
     Prop2DAcoIsoDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop2DAcoIsoDenQ_DEO2_FDTD *>(p);
-    pc->adjointBornAccumulation_wavefieldsep(dVel, wavefieldDP, isFWI);
+    pc->adjointBornAccumulation_wavefieldsep(dVel, wavefieldDP, isFWI, weight);
 }
 
 long Prop2DAcoIsoDenQ_DEO2_FDTD_getNx(void *p) {
