@@ -675,7 +675,7 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
 #if defined(__FUNCTION_CLONES__)
 __attribute__((target_clones("avx","avx2","avx512f","default")))
 #endif
-    inline void adjointBornAccumulation_wavefieldsep_mix(float *dVel, float *wavefieldDP, const long isFWI, const float weight) {
+    inline void adjointBornAccumulation_wavefieldsep_mix(float *dVel, float *wavefieldDP, const float weight) {
  
         // Apply standard IC 
         #pragma omp parallel for num_threads(_nthread) schedule(static)
