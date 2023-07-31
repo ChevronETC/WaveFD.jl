@@ -121,6 +121,13 @@ function adjointBornAccumulation!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD, modeltype::P
          prop.p,     dmodel["v"], wavefields["pspace"], 0)
  end
 
+ # v in model-space with MIX wavefield separation
+function adjointBornAccumulation!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD, modeltype::Prop2DAcoIsoDenQ_DEO2_FDTD_Model_V, imagingcondition::ImagingConditionWaveFieldSeparationMIX, dmodel, wavefields, weight)
+    ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_wavefieldsep_mix, libprop2DAcoIsoDenQ_DEO2_FDTD), Cvoid,
+        (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat},      Cfloat),
+         prop.p,     dmodel["v"], wavefields["pspace"], weight)
+ end
+
 function show(io::IO, prop::Prop2DAcoIsoDenQ_DEO2_FDTD)
     nx = ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_getNx, libprop2DAcoIsoDenQ_DEO2_FDTD), (Clong), (Ptr{Cvoid},), prop.p)
     nz = ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_getNz, libprop2DAcoIsoDenQ_DEO2_FDTD), (Clong), (Ptr{Cvoid},), prop.p)
