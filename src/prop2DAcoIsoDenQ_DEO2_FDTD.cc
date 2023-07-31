@@ -91,7 +91,7 @@ void Prop2DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_wavefieldsep(
 }
 
 void Prop2DAcoIsoDenQ_DEO2_FDTD_AdjointBornAccumulation_wavefieldsep_mix(
-        void *p, float *dVel, float *wavefieldDP, const long isFWI, const float weight) {
+        void *p, float *dVel, float *wavefieldDP, const float weight) {
     Prop2DAcoIsoDenQ_DEO2_FDTD *pc = reinterpret_cast<Prop2DAcoIsoDenQ_DEO2_FDTD *>(p);
     pc->adjointBornAccumulation_wavefieldsep(dVel, wavefieldDP, weight);
 }
