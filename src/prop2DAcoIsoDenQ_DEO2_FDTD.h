@@ -672,126 +672,126 @@ __attribute__((target_clones("avx","avx2","avx512f","default")))
     }
 
 // Mixed IC 
-#if defined(__FUNCTION_CLONES__)
-__attribute__((target_clones("avx","avx2","avx512f","default")))
-#endif
-    inline void adjointBornAccumulation_wavefieldsep_mix(float *dVel, float *wavefieldDP, const float weight) {
+// #if defined(__FUNCTION_CLONES__)
+// __attribute__((target_clones("avx","avx2","avx512f","default")))
+// #endif
+//     inline void adjointBornAccumulation_wavefieldsep_mix(float *dVel, float *wavefieldDP, const float weight) {
  
-        // Apply standard IC 
-        #pragma omp parallel for num_threads(_nthread) schedule(static)
-        for (long bx = 0; bx < _nx; bx += _nbx) {
-            for (long bz = 0; bz < _nz; bz += _nbz) {
-                const long kxmax = MIN(bx + _nbx, _nx);
-                const long kzmax = MIN(bz + _nbz, _nz);
+//         // Apply standard IC 
+//         #pragma omp parallel for num_threads(_nthread) schedule(static)
+//         for (long bx = 0; bx < _nx; bx += _nbx) {
+//             for (long bz = 0; bz < _nz; bz += _nbz) {
+//                 const long kxmax = MIN(bx + _nbx, _nx);
+//                 const long kzmax = MIN(bz + _nbz, _nz);
 
-                for (long kx = bx; kx < kxmax; kx++) {
-#pragma omp simd
-                    for (long kz = bz; kz < kzmax; kz++) {
-                        const long k = kx * _nz + kz;
+//                 for (long kx = bx; kx < kxmax; kx++) {
+// #pragma omp simd
+//                     for (long kz = bz; kz < kzmax; kz++) {
+//                         const long k = kx * _nz + kz;
 
-                        const Type V = _v[k];
-                        const Type B = _b[k];
+//                         const Type V = _v[k];
+//                         const Type B = _b[k];
 
-                        const Type factorV = + 2 * B / (V * V * V);
+//                         const Type factorV = + 2 * B / (V * V * V);
 
-                        dVel[k]  += (1-abs(weight))* (factorV * wavefieldDP[k] * _pOld[k]);
-                    }
-                }
-            }
-        }
-
-
-        if weight < 0.0 ? isFWI = true : isFWI = false 
+//                         dVel[k]  += (1-abs(weight))* (factorV * wavefieldDP[k] * _pOld[k]);
+//                     }
+//                 }
+//             }
+//         }
 
 
-        const long nfft = 2 * _nz;
-        const float scale = 1.0f / (float)(nfft);
+//         if weight < 0.0 ? isFWI = true : isFWI = false 
 
-        // FWI: adj wavefield is dngoing
-        // RTM: adj wavefield is upgoing
-        const long kfft_adj = (isFWI) ? 0 : nfft / 2;
 
-        std::complex<float> * __restrict__ tmp = new std::complex<float>[nfft];
+//         const long nfft = 2 * _nz;
+//         const float scale = 1.0f / (float)(nfft);
 
-        fftwf_plan planForward = fftwf_plan_dft_1d(nfft,
-		    reinterpret_cast<fftwf_complex*>(tmp),
-		    reinterpret_cast<fftwf_complex*>(tmp), +1, FFTW_ESTIMATE);
+//         // FWI: adj wavefield is dngoing
+//         // RTM: adj wavefield is upgoing
+//         const long kfft_adj = (isFWI) ? 0 : nfft / 2;
 
-		fftwf_plan planInverse = fftwf_plan_dft_1d(nfft,
-		    reinterpret_cast<fftwf_complex*>(tmp),
-		    reinterpret_cast<fftwf_complex*>(tmp), -1, FFTW_ESTIMATE);
+//         std::complex<float> * __restrict__ tmp = new std::complex<float>[nfft];
 
-        delete [] tmp;
+//         fftwf_plan planForward = fftwf_plan_dft_1d(nfft,
+// 		    reinterpret_cast<fftwf_complex*>(tmp),
+// 		    reinterpret_cast<fftwf_complex*>(tmp), +1, FFTW_ESTIMATE);
 
-#pragma omp parallel num_threads(_nthread)
-        {
-            std::complex<float> * __restrict__ tmp_nlf = new std::complex<float>[nfft];
-            std::complex<float> * __restrict__ tmp_adj = new std::complex<float>[nfft];
+// 		fftwf_plan planInverse = fftwf_plan_dft_1d(nfft,
+// 		    reinterpret_cast<fftwf_complex*>(tmp),
+// 		    reinterpret_cast<fftwf_complex*>(tmp), -1, FFTW_ESTIMATE);
 
-#pragma omp for schedule(static)
-            for (long bx = 0; bx < _nx; bx += _nbx) {
-                const long kxmax = MIN(bx + _nbx, _nx);
-                for (long kx = bx; kx < kxmax; kx++) {
+//         delete [] tmp;
 
-#pragma omp simd
-                    for (long kfft = 0; kfft < nfft; kfft++) {
-                        tmp_nlf[kfft] = 0;
-                        tmp_adj[kfft] = 0;
-                    }  
+// #pragma omp parallel num_threads(_nthread)
+//         {
+//             std::complex<float> * __restrict__ tmp_nlf = new std::complex<float>[nfft];
+//             std::complex<float> * __restrict__ tmp_adj = new std::complex<float>[nfft];
 
-#pragma omp simd
-                    for (long kz = 0; kz < _nz; kz++) {
-                        const long k = kx * _nz + kz;
-                        tmp_nlf[kz] = scale * wavefieldDP[k];
-                        tmp_adj[kz] = scale * _pOld[k];
-                    }  
+// #pragma omp for schedule(static)
+//             for (long bx = 0; bx < _nx; bx += _nbx) {
+//                 const long kxmax = MIN(bx + _nbx, _nx);
+//                 for (long kx = bx; kx < kxmax; kx++) {
 
-                    fftwf_execute_dft(planForward,
-                        reinterpret_cast<fftwf_complex*>(tmp_nlf),
-                        reinterpret_cast<fftwf_complex*>(tmp_nlf));
+// #pragma omp simd
+//                     for (long kfft = 0; kfft < nfft; kfft++) {
+//                         tmp_nlf[kfft] = 0;
+//                         tmp_adj[kfft] = 0;
+//                     }  
 
-                    fftwf_execute_dft(planForward,
-                        reinterpret_cast<fftwf_complex*>(tmp_adj),
-                        reinterpret_cast<fftwf_complex*>(tmp_adj));
+// #pragma omp simd
+//                     for (long kz = 0; kz < _nz; kz++) {
+//                         const long k = kx * _nz + kz;
+//                         tmp_nlf[kz] = scale * wavefieldDP[k];
+//                         tmp_adj[kz] = scale * _pOld[k];
+//                     }  
 
-                    // upgoing: zero the positive frequencies, excluding Nyquist
-                    // dngoing: zero the negative frequencies, excluding Nyquist
-#pragma omp simd
-                    for (long k = 1; k < nfft / 2; k++) {
-                        tmp_nlf[nfft / 2 + k] = 0;
-                        tmp_adj[kfft_adj + k] = 0;
-                    }
+//                     fftwf_execute_dft(planForward,
+//                         reinterpret_cast<fftwf_complex*>(tmp_nlf),
+//                         reinterpret_cast<fftwf_complex*>(tmp_nlf));
 
-                    fftwf_execute_dft(planInverse,
-                        reinterpret_cast<fftwf_complex*>(tmp_nlf),
-                        reinterpret_cast<fftwf_complex*>(tmp_nlf));
+//                     fftwf_execute_dft(planForward,
+//                         reinterpret_cast<fftwf_complex*>(tmp_adj),
+//                         reinterpret_cast<fftwf_complex*>(tmp_adj));
 
-                    fftwf_execute_dft(planInverse,
-                        reinterpret_cast<fftwf_complex*>(tmp_adj),
-                        reinterpret_cast<fftwf_complex*>(tmp_adj));
+//                     // upgoing: zero the positive frequencies, excluding Nyquist
+//                     // dngoing: zero the negative frequencies, excluding Nyquist
+// #pragma omp simd
+//                     for (long k = 1; k < nfft / 2; k++) {
+//                         tmp_nlf[nfft / 2 + k] = 0;
+//                         tmp_adj[kfft_adj + k] = 0;
+//                     }
 
-                    // Faqi eq 10
-                    // Applied to FWI: [Sup * Rdn]
-                    // Applied to RTM: [Sup * Rup]
-#pragma omp simd
-                    for (long kz = 0; kz < _nz; kz++) {
-                        const long k = kx * _nz + kz;
-                        const float V = _v[k];
-                        const float B = _b[k];
-                        const float factor = 2 * B / (V * V * V);
-                        dVel[k] += abs(weight) * (factor * real(tmp_nlf[kz] * tmp_adj[kz]));
-                    }
+//                     fftwf_execute_dft(planInverse,
+//                         reinterpret_cast<fftwf_complex*>(tmp_nlf),
+//                         reinterpret_cast<fftwf_complex*>(tmp_nlf));
 
-                } // end loop over kx
-            } // end loop over bx
+//                     fftwf_execute_dft(planInverse,
+//                         reinterpret_cast<fftwf_complex*>(tmp_adj),
+//                         reinterpret_cast<fftwf_complex*>(tmp_adj));
 
-            delete [] tmp_nlf;
-            delete [] tmp_adj;
-        } // end parallel region
+//                     // Faqi eq 10
+//                     // Applied to FWI: [Sup * Rdn]
+//                     // Applied to RTM: [Sup * Rup]
+// #pragma omp simd
+//                     for (long kz = 0; kz < _nz; kz++) {
+//                         const long k = kx * _nz + kz;
+//                         const float V = _v[k];
+//                         const float B = _b[k];
+//                         const float factor = 2 * B / (V * V * V);
+//                         dVel[k] += abs(weight) * (factor * real(tmp_nlf[kz] * tmp_adj[kz]));
+//                     }
 
-        fftwf_destroy_plan(planForward);
-        fftwf_destroy_plan(planInverse);
-    }
+//                 } // end loop over kx
+//             } // end loop over bx
+
+//             delete [] tmp_nlf;
+//             delete [] tmp_adj;
+//         } // end parallel region
+
+//         fftwf_destroy_plan(planForward);
+//         fftwf_destroy_plan(planInverse);
+//     }
 
 template<class Type>
 #if defined(__FUNCTION_CLONES__)
