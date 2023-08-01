@@ -1,90 +1,6 @@
 #include <string.h>
 #include <omp.h>
 
-template<class T> void
-injectdata_2d_ongrid(
-    T      *field,
-    T      *data,
-    T      *c,
-    long   *iz,
-    long   *ix,
-    size_t  it,
-    size_t  nt,
-    size_t  nc,
-    size_t  nz,
-    size_t  nx,
-    size_t  nthreads)
-{
-#pragma omp parallel for num_threads(nthreads) default(shared)
-    for (size_t i = 0; i < nc; i++) {
-        field[(ix[i]-1)*nz+iz[i]-1] += c[i]*data[i*nt+it-1];
-    }
-}
-
-template<class T> void
-injectdata_3d_ongrid(
-    T      *field,
-    T      *data,
-    T      *c,
-    long   *iz,
-    long   *iy,
-    long   *ix,
-    size_t  it,
-    size_t  nt,
-    size_t  nc,
-    size_t  nz,
-    size_t  ny,
-    size_t  nx,
-    size_t  nthreads)
-{
-#pragma omp parallel for num_threads(nthreads) default(shared)
-    for (size_t i = 0; i < nc; i++) {
-        field[(ix[i]-1)*ny*nz+(iy[i]-1)*nz+iz[i]-1] += c[i]*data[i*nt+it-1];
-    }
-}
-
-template<class T> void
-extractdata_2d_ongrid(
-    T      *data,
-    T      *field,
-    T      *c,
-    long   *iz,
-    long   *ix,
-    size_t  it,
-    size_t  nt,
-    size_t  nc,
-    size_t  nz,
-    size_t  nx,
-    size_t  nthreads)
-{
-#pragma omp parallel for num_threads(nthreads) default(shared)
-    for (size_t i = 0; i < nc; i++) {
-        data[i*nt+it-1] += c[i]*field[(ix[i]-1)*nz+iz[i]-1];
-    }
-}
-
-template<class T> void
-extractdata_3d_ongrid(
-    T      *data,
-    T      *field,
-    T      *c,
-    long   *iz,
-    long   *iy,
-    long   *ix,
-    size_t  it,
-    size_t  nt,
-    size_t  nc,
-    size_t  nz,
-    size_t  ny,
-    size_t  nx,
-    size_t  nthreads)
-{
-#pragma omp parallel for num_threads(nthreads) default(shared)
-    for (size_t i = 0; i < nc; i++) {
-        data[i*nt+it-1] += c[i]*field[(ix[i]-1)*ny*nz+(iy[i]-1)*nz+iz[i]-1];
-    }
-}
-
 template<class T> inline void
 interpadjoint_helper(
     T       *m,
@@ -213,148 +129,100 @@ interpforward_nd(
 extern "C"
 {
 
+struct SourcePoint32 {
+    long  iu;
+    long  ir;
+    float c;
+};
+
+struct SourcePoint64 {
+    long iu;
+    long ir;
+    double c;
+};
+
 void
-injectdata_2d_ongrid_float(
-    float  *field,
-    float  *data,
-    float  *c,
-    long   *iz,
-    long   *ix,
-    size_t  it,
-    size_t  nt,
-    size_t  nc,
-    size_t  nz,
-    size_t  nx,
-    size_t  nthreads)
+injectdata_float(
+    float          *field,
+    float          *data,
+    size_t          it,
+    size_t          nt,
+    SourcePoint32 **partitions,
+    size_t          npartitions,
+    long           *npoints_per_partition,
+    size_t          nthreads)
 {
-    injectdata_2d_ongrid(field, data, c, iz, ix, it, nt, nc, nz, nx, nthreads);
+#pragma omp parallel for num_threads(nthreads)
+    for (size_t ipartition = 0; ipartition < npartitions; ipartition++) {
+        for (size_t ipoint = 0; ipoint < npoints_per_partition[ipartition]; ipoint++) {
+            struct SourcePoint32 p = partitions[ipartition][ipoint];
+            field[p.iu-1] += p.c*data[(p.ir-1)*nt+it-1];
+        }
+    }
 }
 
 void
-injectdata_2d_ongrid_double(
-    double  *field,
-    double  *data,
-    double  *c,
-    long    *iz,
-    long    *ix,
-    size_t   it,
-    size_t   nt,
-    size_t   nc,
-    size_t   nz,
-    size_t   nx,
-    size_t   nthreads)
+injectdata_double(
+    double         *field,
+    double         *data,
+    size_t          it,
+    size_t          nt,
+    SourcePoint64 **partitions,
+    size_t          npartitions,
+    long           *npoints_per_partition,
+    size_t          nthreads)
 {
-    injectdata_2d_ongrid(field, data, c, iz, ix, it, nt, nc, nz, nx, nthreads);
+#pragma omp parallel for num_threads(nthreads)
+    for (size_t ipartition = 0; ipartition < npartitions; ipartition++) {
+        for (size_t ipoint = 0; ipoint < npoints_per_partition[ipartition]; ipoint++) {
+            struct SourcePoint64 p = partitions[ipartition][ipoint];
+            field[p.iu-1] += p.c*data[(p.ir-1)*nt+it-1];
+        }
+    }
 }
 
 void
-injectdata_3d_ongrid_float(
-    float  *field,
-    float  *data,
-    float  *c,
-    long   *iz,
-    long   *iy,
-    long   *ix,
-    size_t  it,
-    size_t  nt,
-    size_t  nc,
-    size_t  nz,
-    size_t  ny,
-    size_t  nx,
-    size_t  nthreads)
+extractdata_float(
+    float          *data,
+    float          *field,
+    SourcePoint32 **partitions,
+    size_t          npartitions,
+    long           *npoints_per_partition,
+    size_t          it,
+    size_t          nt,
+    size_t          nthreads)
 {
-    injectdata_3d_ongrid(field, data, c, iz, iy, ix, it, nt, nc, nz, ny, nx, nthreads);
+#pragma omp parallel for num_threads(nthreads)
+    for (size_t ipartition = 0; ipartition < npartitions; ipartition++) {
+        struct SourcePoint32 *partition = partitions[ipartition];
+#pragma omp simd
+        for (size_t ipoint = 0; ipoint < npoints_per_partition[ipartition]; ipoint++) {
+            struct SourcePoint32 p = partition[ipoint];
+            data[(p.ir-1)*nt+it-1] += p.c*field[p.iu-1];
+        }
+    }
 }
 
 void
-injectdata_3d_ongrid_double(
-    double *field,
-    double *data,
-    double *c,
-    long   *iz,
-    long   *iy,
-    long   *ix,
-    size_t  it,
-    size_t  nt,
-    size_t  nc,
-    size_t  nz,
-    size_t  ny,
-    size_t  nx,
-    size_t  nthreads)
+extractdata_double(
+    double         *data,
+    double         *field,
+    SourcePoint64 **partitions,
+    size_t          npartitions,
+    long           *npoints_per_partition,
+    size_t          it,
+    size_t          nt,
+    size_t          nthreads)
 {
-    injectdata_3d_ongrid(field, data, c, iz, iy, ix, it, nt, nc, nz, ny, nx, nthreads);
-}
-
-void
-extractdata_2d_ongrid_float(
-    float   *data,
-    float   *field,
-    float   *c,
-    long    *iz,
-    long    *ix,
-    size_t   it,
-    size_t   nt,
-    size_t   nc,
-    size_t   nz,
-    size_t   nx,
-    size_t   nthreads)
-{
-    extractdata_2d_ongrid(data, field, c, iz, ix, it, nt, nc, nz, nx, nthreads);
-}
-
-void
-extractdata_2d_ongrid_double(
-    double  *data,
-    double  *field,
-    double  *c,
-    long    *iz,
-    long    *ix,
-    size_t   it,
-    size_t   nt,
-    size_t   nc,
-    size_t   nz,
-    size_t   nx,
-    size_t   nthreads)
-{
-    extractdata_2d_ongrid(data, field, c, iz, ix, it, nt, nc, nz, nx, nthreads);
-}
-
-void
-extractdata_3d_ongrid_float(
-    float  *data,
-    float  *field,
-    float  *c,
-    long   *iz,
-    long   *iy,
-    long   *ix,
-    size_t  it,
-    size_t  nt,
-    size_t  nc,
-    size_t  nz,
-    size_t  ny,
-    size_t  nx,
-    size_t  nthreads)
-{
-    extractdata_3d_ongrid(data, field, c, iz, iy, ix, it, nt, nc, nz, ny, nx, nthreads);
-}
-
-void
-extractdata_3d_ongrid_double(
-    double *data,
-    double *field,
-    double *c,
-    long   *iz,
-    long   *iy,
-    long   *ix,
-    size_t  it,
-    size_t  nt,
-    size_t  nc,
-    size_t  nz,
-    size_t  ny,
-    size_t  nx,
-    size_t  nthreads)
-{
-    extractdata_3d_ongrid(data, field, c, iz, iy, ix, it, nt, nc, nz, ny, nx, nthreads);
+#pragma omp parallel for num_threads(nthreads)
+    for (size_t ipartition = 0; ipartition < npartitions; ipartition++) {
+        struct SourcePoint64 *partition = partitions[ipartition];
+#pragma omp simd
+        for (size_t ipoint = 0; ipoint < npoints_per_partition[ipartition]; ipoint++) {
+            struct SourcePoint64 p = partition[ipoint];
+            data[(p.ir-1)*nt+it-1] += p.c*field[p.iu-1];
+        }
+    }
 }
 
 void

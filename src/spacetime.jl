@@ -477,7 +477,7 @@ end
 # Hicks suggests b=6.42 for kmax=1/2q
 kaiser(b::T, r::Int64, x::T) where {T<:Union{Float32,Float64}} = abs(x) > r ? zero(T) : T(besseli(0,b*sqrt(1-(x/r)^2))/besseli(0,b))
 
-function hicks!(d::Matrix, b::Real, r::Integer, alphaz::Real, alphax::Real, fz::Vector, fx::Vector)
+function hicks!(d::AbstractMatrix, b::Real, r::Integer, alphaz::Real, alphax::Real, fz::Vector, fx::Vector)
     l = 2*r
     @inbounds for i = 1:l
         a = i - r
@@ -500,7 +500,7 @@ function hicks(b::Real, r::Integer, alphaz::Real, alphax::Real)
     d
 end
 
-function hicks!(d::Array{T,3}, b::Real, r::Integer, alphaz::Real, alphay::Real, alphax::Real, fz::Vector, fy::Vector, fx::Vector) where T<:Real
+function hicks!(d::AbstractArray{T,3}, b::Real, r::Integer, alphaz::Real, alphay::Real, alphax::Real, fz::Vector, fy::Vector, fx::Vector) where T<:Real
     l = 2*r
     @inbounds for i = 1:l
         a = i - r
@@ -526,59 +526,142 @@ function hicks(b::Real, r::Integer, alphaz::Real, alphay::Real, alphax::Real)
     d
 end
 
+function delete_out_of_bounds_points!(iz, ix, ir, c, nz, nx)
+    out_of_bounds_indices = Int[]
+    for i in eachindex(iz)
+        if !( (1 <= iz[i] <= nz) && (1 <= ix[i] <= nx) )
+            push!(out_of_bounds_indices, i)
+        end
+    end
+
+    if length(out_of_bounds_indices) > 0
+        @warn "deleting out-of-bounds indices, $(100*length(out_of_bounds_indices)/length(c))% of total."
+        for i in (iz, ix, ir, c)
+            deleteat!(i, out_of_bounds_indices)
+        end
+    end
+end
+
+function delete_out_of_bounds_points!(iz, iy, ix, ir, c, nz, ny, nx)
+    out_of_bounds_indices = Int[]
+    for i in eachindex(iz)
+        if !( (1 <= iz[i] <= nz) && (1 <= iy[i] <= ny) && (1 <= ix[i] <= nx) )
+            push!(out_of_bounds_indices, i)
+        end
+    end
+
+    if length(out_of_bounds_indices) > 0
+        @warn "deleting out-of bounds indices, $(100*length(out_of_bounds_indices)/length(c))% of total."
+        for i in (iz, iy, ix, ir, c)
+            deleteat!(i, out_of_bounds_indices)
+        end
+    end
+end
+
+function delete_zero_coefficients_points!(iz, ix, ir, c::Vector{T}) where {T}
+    zero_coefficient_indices = Int[]
+    for i in eachindex(iz)
+        if abs(c[i]) < eps(T)
+            push!(zero_coefficient_indices, i)
+        end
+    end
+
+    if length(zero_coefficient_indices) > 0
+        for i in (iz, ix, ir, c)
+            deleteat!(i, zero_coefficient_indices)
+        end
+    end
+end
+
+function delete_zero_coefficients_points!(iz, iy, ix, ir, c::Vector{T}) where {T}
+    zero_coefficient_indices = Int[]
+    for i in eachindex(iz)
+        if abs(c[i]) < eps(T)
+            push!(zero_coefficient_indices, i)
+        end
+    end
+
+    if length(zero_coefficient_indices) > 0
+        for i in (iz, iy, ix, ir, c)
+            deleteat!(i, zero_coefficient_indices)
+        end
+    end
+end
+
+abstract type SourcePoint end
+
+struct SourcePoint32 <: SourcePoint
+    iu::Clong # linear index into 3D or 2D array
+    ir::Clong # reciever index
+    c::Cfloat # injection coefficient
+end
+
+struct SourcePoint64 <: SourcePoint
+    iu::Clong # linear index into 3D or 2D array
+    ir::Clong # reciever index
+    c::Cdouble # injection coefficient
+end
+
+SourcePoint(iu,ir,c::Float32) = SourcePoint32(iu,ir,c)
+SourcePoint(iu,ir,c::Float64) = SourcePoint64(iu,ir,c)
+SourcePointType(_::Type{Float32}) = SourcePoint32
+SourcePointType(_::Type{Float64}) = SourcePoint64
+
+# Base.isless(x::SourcePoint, y::SourcePoint) = x.iu < y.iu
+
 function hickscoeffs(dz::T, dx::T, z0::Float64, x0::Float64, nz::Int64, nx::Int64, z::Array{Float64,1}, x::Array{Float64,1}, fs_index=1, zstagger=0.0, xstagger=0.0) where T
     hicks_b = T(6.42)
     hicks_r = 4
     hicks_l = 2*hicks_r
     hicks_fz = Array{T}(undef, hicks_l)
     hicks_fx = Array{T}(undef, hicks_l)
-    iz = Array{Array{Int64,1}}(undef, length(z))
-    ix = Array{Array{Int64,1}}(undef, length(z))
-    c = Array{Array{T,2}}(undef, length(z))
-    zerotol = Base.eps(T)*1e3
+    iz = Vector{Int}(undef, length(z)*hicks_l*hicks_l)
+    ix = Vector{Int}(undef, length(z)*hicks_l*hicks_l)
+    ir = Vector{Int}(undef, length(z)*hicks_l*hicks_l)
+    c = Vector{T}(undef, length(z)*hicks_l*hicks_l)
+    L = LinearIndices((hicks_l,hicks_l,length(z)))
     for i = 1:length(z)
         iz_mid = floor(Int, (z[i] - z0)/dz) + 1
         ix_mid = floor(Int, (x[i] - x0)/dx) + 1
         alphaz = T((z[i] - (z0 + (iz_mid - 1 + zstagger)*dz))/dz)
         alphax = T((x[i] - (x0 + (ix_mid - 1 + xstagger)*dx))/dx)
 
-        ongrid = abs(alphaz) < zerotol && abs(alphax) < zerotol
-        if ongrid == true
-            iz[i] = [iz_mid]
-            ix[i] = [ix_mid]
-            c[i] = ones(T,1,1)
-        else
-            iz[i] = collect(iz_mid-hicks_r+1:iz_mid+hicks_r)
-            ix[i] = collect(ix_mid-hicks_r+1:ix_mid+hicks_r)
-            c[i] = Array{T}(undef, hicks_l, hicks_l)
-            hicks!(c[i], hicks_b, hicks_r, alphaz, alphax, hicks_fz, hicks_fx)
+        i1 = L[1,1,i]
+        i2 = L[hicks_l,hicks_l,i]
+        ci = reshape(view(c,i1:i2), hicks_l, hicks_l)
+        hicks!(ci, hicks_b, hicks_r, alphaz, alphax, hicks_fz, hicks_fx)
 
-            # reflect source terms above the free-surface
-            # we assume that if there is no free-surface, then
-            # the model would have being padded accordingly, making
-            # the below if statement always evaluate to false
-            if iz[i][1] == fs_index - 3
-                c[i][5,:] -= c[i][3,:]
-                c[i][6,:] -= c[i][2,:]
-                c[i][7,:] -= c[i][1,:]
-            end
-            if iz[i][1] == fs_index - 2
-                c[i][4,:] -= c[i][2,:]
-                c[i][5,:] -= c[i][1,:]
-            end
-            if iz[i][1] == fs_index - 1
-                c[i][3,:] -= c[i][1,:]
-            end
+        for _ix=1:hicks_l, _iz=1:hicks_l
+            j = L[_iz,_ix,i]
+            iz[j] = iz_mid - hicks_r + _iz
+            ix[j] = ix_mid - hicks_r + _ix
+            ir[j] = i
+        end
 
-            # cut the coefficients beyond the edge of the domain:
-            iz_in = findall(z->(fs_index+1)<=z<=nz,iz[i]) # exclude the free-surface since its coefficients should always be zero
-            ix_in = findall(x->1<=x<=nx,ix[i])
-            c[i] = c[i][iz_in,ix_in]
-            iz[i] = iz[i][iz_in]
-            ix[i] = ix[i][ix_in]
+        # reflect source terms above the free-surface
+        # we assume that if there is no free-surface, then
+        # the model would have being padded accordingly, making
+        # the below if statement always evaluate to false
+        j = L[1,1,i]
+        if iz[j] == fs_index - 3
+            ci[5,:] -= ci[3,:]
+            ci[6,:] -= ci[2,:]
+            ci[7,:] -= ci[1,:]
+        end
+        if iz[j] == fs_index - 2
+            ci[4,:] -= ci[2,:]
+            ci[5,:] -= ci[1,:]
+        end
+        if iz[j] == fs_index - 1
+            ci[3,:] -= ci[1,:]
         end
     end
-    iz, ix, c
+
+    delete_out_of_bounds_points!(iz, ix, ir, c, nz, nx)
+    delete_zero_coefficients_points!(iz, ix, ir, c)
+
+    M = LinearIndices((nz,nx))
+    [SourcePoint(M[iz[i],ix[i]], ir[i], c[i]) for i in eachindex(iz)]
 end
 
 function hickscoeffs(dz::T, dy::T, dx::T, z0::Float64, y0::Float64, x0::Float64, nz::Int64, ny::Int64, nx::Int64, z::Array{Float64,1}, y::Array{Float64,1}, x::Array{Float64,1}, fs_index=1, zstagger=0.0, ystagger=0.0, xstagger=0.0) where T
@@ -588,11 +671,12 @@ function hickscoeffs(dz::T, dy::T, dx::T, z0::Float64, y0::Float64, x0::Float64,
     hicks_fz = Array{T}(undef, hicks_l)
     hicks_fy = Array{T}(undef, hicks_l)
     hicks_fx = Array{T}(undef, hicks_l)
-    iz = Array{Array{Int64,1}}(undef, length(z))
-    iy = Array{Array{Int64,1}}(undef, length(z))
-    ix = Array{Array{Int64,1}}(undef, length(z))
-    c = Array{Array{T,3}}(undef, length(z))
-    zerotol = Base.eps(T)*1e3
+    iz = Vector{Int}(undef, length(z)*hicks_l*hicks_l*hicks_l)
+    iy = Vector{Int}(undef, length(z)*hicks_l*hicks_l*hicks_l)
+    ix = Vector{Int}(undef, length(z)*hicks_l*hicks_l*hicks_l)
+    ir = Vector{Int}(undef, length(z)*hicks_l*hicks_l*hicks_l)
+    c = Vector{T}(undef, length(z)*hicks_l*hicks_l*hicks_l)
+    L = LinearIndices((hicks_l,hicks_l,hicks_l,length(z)))
     for i = 1:length(z)
         iz_mid = floor(Int, (z[i] - z0)/dz) + 1
         iy_mid = floor(Int, (y[i] - y0)/dy) + 1
@@ -601,53 +685,51 @@ function hickscoeffs(dz::T, dy::T, dx::T, z0::Float64, y0::Float64, x0::Float64,
         alphay = T((y[i] - (y0 + (iy_mid - 1 + ystagger)*dy))/dy)
         alphax = T((x[i] - (x0 + (ix_mid - 1 + xstagger)*dx))/dx)
 
-        ongrid = abs(alphaz) < zerotol && abs(alphay) < zerotol && abs(alphax) < zerotol
-        if ongrid == true
-            iz[i] = [iz_mid]
-            iy[i] = [iy_mid]
-            ix[i] = [ix_mid]
-            c[i] = ones(T,1,1,1)
-        else
-            iz[i] = collect(iz_mid-hicks_r+1:iz_mid+hicks_r)
-            iy[i] = collect(iy_mid-hicks_r+1:iy_mid+hicks_r)
-            ix[i] = collect(ix_mid-hicks_r+1:ix_mid+hicks_r)
-            c[i] = Array{T}(undef, hicks_l, hicks_l, hicks_l)
-            hicks!(c[i], hicks_b, hicks_r, alphaz, alphay, alphax, hicks_fz, hicks_fy, hicks_fx)
+        i1 = L[1,1,1,i]
+        i2 = L[hicks_l,hicks_l,hicks_l,i]
+        ci = reshape(view(c,i1:i2), hicks_l, hicks_l, hicks_l)
+        hicks!(ci, hicks_b, hicks_r, alphaz, alphay, alphax, hicks_fz, hicks_fy, hicks_fx)
 
-            # reflect source terms above the free-surface
-            # we assume that if there is no free-surface, then
-            # the model would have being padded accordingly, making
-            # the below if statement always evaluate to false
-            if iz[i][1] == fs_index-3
-                c[i][5,:,:] -= c[i][3,:,:]
-                c[i][6,:,:] -= c[i][2,:,:]
-                c[i][7,:,:] -= c[i][1,:,:]
-            end
-            if iz[i][1] == fs_index-2
-                c[i][4,:,:] -= c[i][2,:,:]
-                c[i][5,:,:] -= c[i][1,:,:]
-            end
-            if iz[i][1] == fs_index-1
-                c[i][3,:,:] -= c[i][1,:,:]
-            end
+        for _ix=1:hicks_l, _iy=1:hicks_l, _iz=1:hicks_l
+            j = L[_iz,_iy,_ix,i]
+            iz[j] = iz_mid - hicks_r + _iz
+            iy[j] = iy_mid - hicks_r + _iy
+            ix[j] = ix_mid - hicks_r + _ix
+            ir[j] = i
+        end
 
-            # cut the coefficients beyond the edge of the domain:
-            iz_in = findall(z->(fs_index+1)<=z<=nz,iz[i]) # exclude the free-surface since its coefficients should always be zero
-            iy_in = findall(y->1<=y<=ny,iy[i])
-            ix_in = findall(x->1<=x<=nx,ix[i])
-            c[i] = c[i][iz_in,iy_in,ix_in]
-            iz[i] = iz[i][iz_in]
-            iy[i] = iy[i][iy_in]
-            ix[i] = ix[i][ix_in]
+        # reflect source terms above the free-surface
+        # we assume that if there is no free-surface, then
+        # the model would have being padded accordingly, making
+        # the below if statement always evaluate to false
+        j = L[1,1,1,i]
+        if iz[j] == fs_index-3
+            ci[5,:,:] -= ci[3,:,:]
+            ci[6,:,:] -= ci[2,:,:]
+            ci[7,:,:] -= ci[1,:,:]
+        end
+        if iz[j] == fs_index-2
+            ci[4,:,:] -= ci[2,:,:]
+            ci[5,:,:] -= ci[1,:,:]
+        end
+        if iz[j] == fs_index-1
+            ci[3,:,:] -= ci[1,:,:]
         end
     end
-    iz, iy, ix, c
+
+    delete_out_of_bounds_points!(iz, iy, ix, ir, c, nz, ny, nx)
+    delete_zero_coefficients_points!(iz, iy, ix, ir, c)
+
+    M = LinearIndices((nz,ny,nx))
+    [SourcePoint(M[iz[i],iy[i],ix[i]], ir[i], c[i]) for i in eachindex(iz)]
 end
 
 function linearcoeffs(dz::T, dx::T, z0::Float64, x0::Float64, nz::Int64, nx::Int64, z::Array{Float64,1}, x::Array{Float64,1}, fs_index=1) where T
-    iz = Array{Array{Int64,1}}(undef, length(z))
-    ix = Array{Array{Int64,1}}(undef, length(z))
-    c = Array{Array{T,2}}(undef, length(z))
+    iz = Vector{Int}(undef, length(z)*4)
+    ix = Vector{Int}(undef, length(z)*4)
+    ir = Vector{Int}(undef, length(z)*4)
+    c = Vector{T}(undef, length(z)*4)
+    L = LinearIndices((2,2,length(z)))
     for i = 1:length(z)
         kx = floor(Int64, (x[i] - x0) / dx) + 1
         kz = floor(Int64, (z[i] - z0) / dz) + 1
@@ -655,31 +737,41 @@ function linearcoeffs(dz::T, dx::T, z0::Float64, x0::Float64, nz::Int64, nx::Int
         rx = (x[i] - (x0 + dx*(kx-1))) / dx
         rz = (z[i] - (z0 + dz*(kz-1))) / dz
 
-        c[i] = Array{T}(undef, 2,2)
-        c[i][1,1] = (1.0 - rx) * (1.0 - rz)
-        c[i][2,1] = (1.0 - rx) *        rz
-        c[i][1,2] =        rx  * (1.0 - rz)
-        c[i][2,2] =        rx  *        rz
+        c[L[1,1,i]] = (1.0 - rx) * (1.0 - rz)
+        c[L[2,1,i]] = (1.0 - rx) *        rz
+        c[L[1,2,i]] =        rx  * (1.0 - rz)
+        c[L[2,2,i]] =        rx  *        rz
 
-        iz[i] = collect(kz:kz+1)
-        ix[i] = collect(kx:kx+1)
+        for _ix=1:2, _iz=1:2
+            j = L[_iz,_ix,i]
+            iz[j] = kz + _iz - 1
+            ix[j] = kx + _ix - 1
+            ir[j] = i
+        end
 
-        # cut the coefficients beyond the edge of the domain:
-        iz_in = findall(z->(fs_index+1)<=z<=nz,iz[i]) # exclude the free-surface since its coefficients should always be zero
-        ix_in = findall(x->1<=x<=nx,ix[i])
-        c[i] = c[i][iz_in,ix_in]
-        iz[i] = iz[i][iz_in]
-        ix[i] = ix[i][ix_in]
+        # free surface should always be zero
+        if iz[L[1,1,i]] == fs_index
+            for _ix = 1:2
+                c[L[1,_ix,i]] = 0
+            end
+        end
     end
-    iz, ix, c
+
+    delete_out_of_bounds_points!(iz, ix, ir, c, nz, nx)
+    delete_zero_coefficients_points!(iz, ix, ir, c)
+
+    M = LinearIndices((nz,nx))
+    [SourcePoint(M[iz[i],ix[i]], ir[i], c[i]) for i in eachindex(iz)]
 end
 
 function linearcoeffs(dz::T, dy::T, dx::T, z0::Float64, y0::Float64, x0::Float64, nz::Int64, ny::Int64, nx::Int64, z::Array{Float64,1}, y::Array{Float64,1}, x::Array{Float64,1}, fs_index=1) where T
-    iz = Array{Array{Int64,1}}(undef, length(z))
-    iy = Array{Array{Int64,1}}(undef, length(z))
-    ix = Array{Array{Int64,1}}(undef, length(z))
-    c = Array{Array{T,3}}(undef, length(z))
-    for i = 1:length(z)
+    iz = Vector{Int}(undef, length(z)*8)
+    iy = Vector{Int}(undef, length(z)*8)
+    ix = Vector{Int}(undef, length(z)*8)
+    ir = Vector{Int}(undef, length(z)*8)
+    c = Vector{T}(undef, length(z)*8)
+    L = LinearIndices((2,2,2,length(z)))
+    for i in eachindex(z)
         kx = floor(Int64, (x[i] - x0) / dx) + 1
         ky = floor(Int64, (y[i] - y0) / dy) + 1
         kz = floor(Int64, (z[i] - z0) / dz) + 1
@@ -688,383 +780,222 @@ function linearcoeffs(dz::T, dy::T, dx::T, z0::Float64, y0::Float64, x0::Float64
         ry = (y[i] - (y0 + dy*(ky-1))) / dy
         rz = (z[i] - (z0 + dz*(kz-1))) / dz
 
-        c[i] = Array{T}(undef, 2,2,2)
-        c[i][1,1,1] = (1.0 - rx) * (1.0 - ry) * (1.0 - rz)
-        c[i][2,1,1] = (1.0 - rx) * (1.0 - ry) *        rz
-        c[i][1,2,1] = (1.0 - rx) *        ry  * (1.0 - rz)
-        c[i][2,2,1] = (1.0 - rx) *        ry  *        rz
-        c[i][1,1,2] =        rx  * (1.0 - ry) * (1.0 - rz)
-        c[i][2,1,2] =        rx  * (1.0 - ry) *        rz
-        c[i][1,2,2] =        rx  *        ry  * (1.0 - rz)
-        c[i][2,2,2] =        rx  *        ry  *        rz
+        c[L[1,1,1,i]] = (1.0 - rx) * (1.0 - ry) * (1.0 - rz)
+        c[L[2,1,1,i]] = (1.0 - rx) * (1.0 - ry) *        rz
+        c[L[1,2,1,i]] = (1.0 - rx) *        ry  * (1.0 - rz)
+        c[L[2,2,1,i]] = (1.0 - rx) *        ry  *        rz
+        c[L[1,1,2,i]] =        rx  * (1.0 - ry) * (1.0 - rz)
+        c[L[2,1,2,i]] =        rx  * (1.0 - ry) *        rz
+        c[L[1,2,2,i]] =        rx  *        ry  * (1.0 - rz)
+        c[L[2,2,2,i]] =        rx  *        ry  *        rz
 
-        iz[i] = collect(kz:kz+1)
-        iy[i] = collect(ky:ky+1)
-        ix[i] = collect(kx:kx+1)
-
-        # cut the coefficients beyond the edge of the domain:
-        iz_in = findall(z->(fs_index+1)<=z<=nz,iz[i]) # exclude the free-surface since its coefficients should always be zero
-        iy_in = findall(y->1<=y<=ny,iy[i])
-        ix_in = findall(x->1<=x<=nx,ix[i])
-        c[i] = c[i][iz_in,iy_in,ix_in]
-        iz[i] = iz[i][iz_in]
-        iy[i] = iy[i][iy_in]
-        ix[i] = ix[i][ix_in]
-    end
-    iz, iy, ix, c
-end
-
-function ongridcoeffs(dz::T, dx::T, z0::Float64, x0::Float64, nz::Int64, nx::Int64, z::Array{Float64,1}, x::Array{Float64,1}) where T
-    iz = Array{Int64}(undef, length(z))
-    ix = Array{Int64}(undef, length(z))
-    c  = Array{T}(undef, length(z))
-    for i = 1:length(z)
-        iz[i] = round(Int64, (z[i] - z0)/dz) + 1
-        ix[i] = round(Int64, (x[i] - x0)/dx) + 1
-        c[i]  = one(T)
-    end
-    iz, ix, c
-end
-
-function ongridcoeffs(dz::T, dy::T, dx::T, z0::Float64, y0::Float64, x0::Float64, nz::Int64, ny::Int64, nx::Int64, z::Array{Float64,1}, y::Array{Float64,1}, x::Array{Float64,1}) where T
-    iz = Array{Int64}(undef, length(z))
-    iy = Array{Int64}(undef, length(z))
-    ix = Array{Int64}(undef, length(z))
-    c  = Array{T}(undef, length(z))
-    for i = 1:length(z)
-        iz[i] = round(Int64, (z[i] - z0)/dz) + 1
-        iy[i] = round(Int64, (y[i] - y0)/dy) + 1
-        ix[i] = round(Int64, (x[i] - x0)/dx) + 1
-        c[i]  = one(T)
-    end
-    iz, iy, ix, c
-end
-
-function sourceblock_range(nb, irng)
-    b,rm = divrem(length(irng),nb)
-    blocks = Vector{UnitRange{Int}}(undef, nb)
-    i1 = irng[1]
-    for iblock = 1:nb
-        i2 = i1 + b - 1
-        if iblock <= rm
-            i2 += 1
+        for _ix=1:2, _iy=1:2, _iz=1:2
+            j = L[_iz,_iy,_ix,i] 
+            iz[j] = kz + _iz - 1
+            iy[j] = ky + _iy - 1
+            ix[j] = kx + _ix - 1
+            ir[j] = i
         end
-        blocks[iblock] = i1:i2
-        i1 = i2+1
+
+        # free surface should always be zero
+        if iz[L[1,1,1,i]] == fs_index
+            for _ix = 1:2, _iy = 1:2
+                c[L[1,_iy,_ix,i]] = 0
+            end
+        end
     end
-    blocks
-end
 
-function get_blocks_for_source_point(i, blocks)
-    iblock_min = findfirst(block->in(i[1],block), blocks)
-    iblock_max = findfirst(block->in(i[end],block), blocks)
-    iblock_min:iblock_max
-end
+    delete_out_of_bounds_points!(iz, iy, ix, ir, c, nz, ny, nx)
+    delete_zero_coefficients_points!(iz, iy, ix, ir, c)
 
-struct SourcePoint{T,N}
-    c::Array{T,N}
-    r::NTuple{N,Vector{Int}}
-    index::Int
-end
-
-struct SourceBlock{T,N}
-    block_range::NTuple{N,UnitRange{Int}}
-    source_points::Vector{SourcePoint{T,N}}
-end
-
-Base.range(block::SourceBlock, i) = block.block_range[i]
-
-function source_blocking_range(i)
-    a = mapreduce(minimum, min, i)::Int
-    b = mapreduce(maximum, max, i)::Int
-    a:b
+    M = LinearIndices((nz,ny,nx))
+    [SourcePoint(M[iz[i],iy[i],ix[i]], ir[i], c[i]) for i in eachindex(iz)]
 end
 
 """
-    sourceblocks = source_blocking(nz, nx, nbz, nbx, iz, ix, c)
+    sourceblocks = source_blocking(points, nthreads=Sys.CPU_THREADS)
 
-Blocks the axes with `nbz*nbx` blocks, and partitions `iz`, `ix` and `c` into
-sourceblocks::Vector{SourceBlock}.
+Blocks points `points::Vector{SourcePoint}` into partitions such that no two partitions have the same
+grid-point (iz,ix).
 
 # Inputs
-* nz,nx is the finite-difference model size
-* iz,ix are the injection points
-* c are the injection filters (e.g. Hick's coefficients)
-* nbz,nbx are the number of blocks in each dimension
+* points are the injection points. Each point has structure (iu,ir,c) where,
+  * iu is the linear index in the finite difference grid
+  * ir is the receiver/source index
+  * c is the injection/extraction coefficient
+* nthreads are the number of threads that will be used and helps inform the number of partitions.
+
+# Output
+The output is organized as:
+```
+[
+    [ # block 1
+        (i1,ir1,c1), # first point in block 1
+        (i2,ir2,c2)  # second point in block 1
+        ...
+    ],
+    [ # block 2
+        (i3,ir3,c3), # first point in block 2
+        (i4,ir4,c4), # second point in block 2
+        ...
+    ],
+    ...
+]
+```
+and where i1,i2,... are the linearized indices of the finite difference grid
 
 see also WaveFD.injectdata!
 """
-function source_blocking(nz, nx, nbz, nbx, iz, ix, c::Vector{<:AbstractMatrix{T}}) where {T}
-    izrng = source_blocking_range(iz)
-    ixrng = source_blocking_range(ix)
-    zblocks = sourceblock_range(nbz, izrng) # TODO change name
-    xblocks = sourceblock_range(nbx, ixrng)
+source_blocking(points::Vector{T}, nthreads=Sys.CPU_THREADS) where T <: SourcePoint = blocking(points, x->x.iu, nthreads)
 
-    nblocks = nbz*nbx
+"""
+receiverblocks = receiver_blocking(points, nthreads=Sys.CPU_THREADS)
 
-    source_blocks = [SourceBlock((zblock,xblock), SourcePoint{T,2}[]) for zblock in zblocks, xblock in xblocks]
-    for kshot = 1:length(iz)
-        source_point = SourcePoint(c[kshot], (iz[kshot],ix[kshot]), kshot)
+Blocks points `points::Vector{SourcePoint}` into partitions such that no two partitions have the same
+receiver index.
 
-        jz_blocks = get_blocks_for_source_point(iz[kshot], zblocks)
-        jx_blocks = get_blocks_for_source_point(ix[kshot], xblocks)
+# Inputs
+* points are the extraction points. Each point has structure (iu,ir,c) where,
+  * iu is the linear index in the finite difference grid
+  * ir is the receiver/source index
+  * c is the injection/extraction coefficient
+* nthreads are the number of threads that will be used and helps inform the number of partitions.
 
-        for jx_block in jx_blocks, jz_block in jz_blocks
-            push!(source_blocks[jz_block,jx_block].source_points, source_point)
+# Output
+The output is organized as:
+```
+[
+    [ # block 1
+        (i1,ir1,c1), # first point in block 1
+        (i2,ir2,c2)  # second point in block 1
+        ...
+    ],
+    [ # block 2
+        (i3,ir3,c3), # first point in block 2
+        (i4,ir4,c4), # second point in block 2
+        ...
+    ],
+    ...
+]
+```
+and where i1,i2,... are the linearized indices of the finite difference grid
+
+see also WaveFD.extractdata!
+"""
+receiver_blocking(points::Vector{T}, nthreads=Sys.CPU_THREADS) where T <:SourcePoint = blocking(points, x->x.ir, nthreads)
+
+function blocking(points::Vector{T}, by, nthreads=Sys.CPU_THREADS) where T <: SourcePoint
+    sort!(points; by)
+
+    # Put points into partitions such that no two partitions have the same finite-difference-grid-point.
+    # In other words, if a new point is already in a partition, then it must go in that same partition.
+    # This enables threading over partitions without race conditions. Note tha points that occupy the same
+    # finie-difference-grid point will be adjacent in "points" due to the above sort.
+    npartitions = min(nthreads, length(points))
+    npartitions >= 1 || error("max(nthreads, length(points)) must be greater than zero, nthreads=$nthreads, length(points)=$(length(points))")
+
+    nominal_points_per_partition,r = divrem(length(points), npartitions)
+    if r > 0
+        nominal_points_per_partition += 1
+    end
+    partitions = [T[] for _ = 1:npartitions]
+
+    ipartition = 1
+    point_counter = 1
+    for ipoint in eachindex(points)
+        if point_counter <= nominal_points_per_partition || (ipoint > 1 && by(points[ipoint]) == by(points[ipoint-1]))
+            push!(partitions[ipartition], points[ipoint])
+            point_counter += 1
+        else
+            ipartition += 1
+            if ipartition > npartitions # this should never happen
+                @warn "This algorithm is wrong, adding another partition"
+                push!(partitions, T[])
+            end
+            push!(partitions[ipartition], points[ipoint])
+            point_counter = 1
         end
     end
-    source_blocks
-end
 
-function source_blocking(nz, ny, nx, nbz, nby, nbx, iz, iy, ix, c::Vector{<:AbstractArray{T,3}}) where {T}
-    izrng = source_blocking_range(iz)
-    iyrng = source_blocking_range(iy)
-    ixrng = source_blocking_range(ix)
-    zblocks = sourceblock_range(nbz, izrng)
-    yblocks = sourceblock_range(nby, iyrng)
-    xblocks = sourceblock_range(nbx, ixrng)
-
-    nblocks = nbz*nbx
-
-    source_blocks = [SourceBlock((zblock,yblock,xblock), SourcePoint{T,3}[]) for zblock in zblocks, yblock in yblocks, xblock in xblocks]
-    for kshot = 1:length(iz)
-        source_point = SourcePoint(c[kshot], (iz[kshot],iy[kshot],ix[kshot]), kshot)
-
-        jz_blocks = get_blocks_for_source_point(iz[kshot], zblocks)
-        jy_blocks = get_blocks_for_source_point(iy[kshot], yblocks)
-        jx_blocks = get_blocks_for_source_point(ix[kshot], xblocks)
-
-        for jx_block in jx_blocks, jy_block in jy_blocks, jz_block in jz_blocks
-            push!(source_blocks[jz_block,jy_block,jx_block].source_points, source_point)
+    empty_partition_indices = Int[]
+    for (ipartition,partition) in enumerate(partitions)
+        if isempty(partition)
+            push!(empty_partition_indices, ipartition)
         end
     end
-    source_blocks
+    deleteat!(partitions, empty_partition_indices)
+
+    partitions
 end
 
 """
-  injectdata!(field, blks, data, it)
+  injectdata!(field, partitions, data, it, nthreads=Sys.CPU_THREADS)
 
-Inject data from data[it] into field. `blks` is computed using `WaveFD.source_blocking`.
+Inject data from data[it] into field. `partitions` is computed using `WaveFD.source_blocking`.
 
-The general work-flow is:
+The general 2D work-flow is:
 ```
 nz,nx=size(field)
 nthreads=20
-blks = WaveFD.source_blocking(nz,nx,nbz,nbx,iz,ix,c)
+partitions = WaveFD.source_blocking(nz,nx,iz,ix,ir,c,nthreads)
 for it = 1:ntrec # time loop
-    WaveFD.injectdata!(field, blks, data, it)
+    WaveFD.injectdata!(field, partitions, data, it, nthreads)
+    ...
+end
+```
+and the workflow for 3D is similar:
+```
+nz,ny,nx=size(field)
+nthreads=20
+partitions = WaveFD.source_blocking(nz,nx,iz,iy,ix,ir,c,nthreads)
+for it = 1:ntrec # time loop
+    WaveFD.injectdata!(field, partitions, data, it, nthreads)
     ...
 end
 ```
 """
-function injectdata!(field::AbstractArray, blocks::AbstractArray{<:SourceBlock}, data::AbstractArray, it::Int)
-    @sync for block in blocks
-        Threads.@spawn injectdata_block!(field, block, data, it)
-    end
+function injectdata!(field::Array{Float32}, partitions::Vector{<:Vector{SourcePoint32}}, data::Array, it::Int, nthreads=Sys.CPU_THREADS)
+    npartitions = length(partitions)
+    npoints_per_partition = [length(partition) for partition in partitions]
+    nt = size(data, 1)
+    @ccall libspacetime.injectdata_float(field::Ptr{Cfloat}, data::Ptr{Cfloat}, it::Csize_t, nt::Csize_t, partitions::Ptr{Ptr{SourcePoint32}}, npartitions::Csize_t, npoints_per_partition::Ptr{Clong}, nthreads::Csize_t)::Cvoid
 end
 
-function injectdata_block!(field::AbstractArray{T,2}, block::SourceBlock, data::AbstractArray{T}, it::Int) where {T}
-    @inbounds for source_point in block.source_points
-        iz,ix,i,c = source_point.r[1],source_point.r[2],source_point.index,source_point.c
-        for jz = 1:length(iz)
-            kz = iz[jz]
-            kz ∈ range(block, 1) || continue
-            for jx = 1:length(ix)
-                kx = ix[jx]
-                kx ∈ range(block, 2) || continue
-                
-                field[kz,kx] += c[jz,jx]*data[it,i]
-            end
-        end
-    end
-end
-
-function injectdata_block!(field::AbstractArray{T,3}, block::SourceBlock, data::AbstractArray{T}, it::Int) where {T}
-    @inbounds for source_point in block.source_points
-        iz,iy,ix,i,c = source_point.r[1],source_point.r[2],source_point.r[3],source_point.index,source_point.c
-        for jz = 1:length(iz)
-            kz = iz[jz]
-            kz ∈ range(block, 1) || continue
-            for jy = 1:length(iy)
-                ky = iy[jy]
-                ky ∈ range(block, 2) || continue
-                for jx = 1:length(ix)
-                    kx = ix[jx]
-                    kx ∈ range(block, 3) || continue
-                
-                    field[kz,ky,kx] += c[jz,jy,jx]*data[it,i]
-                end
-            end
-        end
-    end
+function injectdata!(field::Array{Float64}, partitions::Vector{<:Vector{SourcePoint64}}, data::Array, it::Int, nthreads=Sys.CPU_THREADS)
+    npartitions = length(partitions)
+    npoints_per_partition = [length(partition) for partition in partitions]
+    nt = size(data, 1)
+    @ccall libspacetime.injectdata_double(field::Ptr{Cdouble}, data::Ptr{Cdouble}, it::Csize_t, nt::Csize_t, partitions::Ptr{Ptr{SourcePoint64}}, npartitions::Csize_t, npoints_per_partition::Ptr{Clong}, nthreads::Csize_t)::Cvoid
 end
 
 """
-  injectdata!(field, data, it, iz, ix, c[, bz=10])
+  injectdata!(field, data, points[, nthreads=Sys.CPU_THREADS])
 """
-function injectdata!(field::AbstractArray{T,2}, data::AbstractArray{T,2}, it::Integer, iz::AbstractVector{Vector{Int64}}, ix::AbstractVector{Vector{Int64}}, c::AbstractVector{Array{C,2}}, nbz::Integer=10, nbx::Integer=10) where {T,C}
-    blocks = WaveFD.source_blocking(size(field)..., nbz, nbx, iz, ix, c)
-    injectdata!(field, blocks, data, it)
+function injectdata!(field::Array{T}, data::Array{T,2}, it::Integer, points, nthreads=Sys.CPU_THREADS) where {T}
+    blocks = source_blocking(points, nthreads)
+    injectdata!(field, blocks, data, it, nthreads)
 end
 
 """
-  injectdata!(field, data, it, iz, iy, ix, c[,bz=10])
+    extractdata!(data, field, it, points, nthreads=Sys.CPU_THREADS)
 """
-function injectdata!(field::AbstractArray{T,3}, data::AbstractArray{T,2}, it::Integer, iz::AbstractVector{Vector{Int64}}, iy::AbstractVector{Vector{Int64}}, ix::AbstractVector{Vector{Int64}}, c::AbstractVector{Array{C,3}}, nbz::Integer=1, nby::Integer=10, nbx::Integer=10) where {T,C}
-    blocks = WaveFD.source_blocking(size(field)..., nbz, nby, nbx, iz, iy, ix, c)
-    injectdata!(field, blocks, data, it)
+function extractdata!(data::Array{Float32,2}, field::Array{Float32}, it::Integer, partitions::Vector{<:Vector{SourcePoint32}}, nthreads=Sys.CPU_THREADS)
+    npartitions = length(partitions)
+    npoints_per_partition = [length(partition) for partition in partitions]
+    nt = size(data, 1)
+    @ccall libspacetime.extractdata_float(data::Ptr{Cfloat}, field::Ptr{Cfloat}, partitions::Ptr{Ptr{SourcePoint32}}, npartitions::Csize_t, npoints_per_partition::Ptr{Clong}, it::Csize_t, nt::Csize_t, nthreads::Csize_t)::Cvoid
 end
 
-function extractdata!(data::AbstractArray{C,2}, field::AbstractArray{C,2}, it::Integer, iz::AbstractArray{Array{Int64,1},1}, ix::AbstractArray{Array{Int64,1},1}, c::AbstractArray{Array{T,2},1}) where {T,C}
-    for i = 1:length(iz)
-        nc_z, nc_x = size(c[i])
-        for ihx=1:nc_x
-            @simd ivdep for ihz=1:nc_z
-                @inbounds begin
-                    data[it,i] += c[i][ihz,ihx]*field[iz[i][ihz],ix[i][ihx]]
-                end
-            end
-        end
-    end
+function extractdata!(data::Array{Float64,2}, field::Array{Float64}, it::Integer, partitions::Vector{<:Vector{SourcePoint64}}, nthreads=Sys.CPU_THREADS)
+    npartitions = length(partitions)
+    npoints_per_partition = [length(partition) for partition in partitions]
+    nt = size(data, 1)
+    @ccall libspacetime.extractdata_double(data::Ptr{Cdouble}, field::Ptr{Cdouble}, partitions::Ptr{Ptr{SourcePoint64}}, npartitions::Csize_t, npoints_per_partition::Ptr{Clong}, it::Csize_t, nt::Csize_t, nthreads::Csize_t)::Cvoid
 end
 
-function extractdata!(data::AbstractArray{C,2}, field::AbstractArray{C,3}, it::Integer, iz::AbstractArray{Array{Int64,1},1}, iy::AbstractArray{Array{Int64,1},1}, ix::AbstractArray{Array{Int64,1},1}, c::AbstractArray{Array{T,3},1}) where {T,C}
-    Threads.@threads for i = 1:length(iz)
-        nc_z, nc_y, nc_x = size(c[i])
-        for ihx=1:nc_x, ihy=1:nc_y, ihz=1:nc_z
-            @inbounds begin
-                data[it,i] += c[i][ihz,ihy,ihx]*field[iz[i][ihz],iy[i][ihy],ix[i][ihx]]
-            end
-        end
-    end
-end
-
-#
-# injection/extraction methods specialized to on-grid source/receivers:
-#
-function allongrid(dz::T, dx::T, z0::Float64, x0::Float64, z::Array{Float64,1}, x::Array{Float64,1}; rtol=1e-6) where T
-    for i = 1:length(z)
-        if isapprox(z0 + round(Int, (z[i] - z0)/dz)*dz, z[i], rtol=rtol) == false
-            return false
-        end
-        if isapprox(x0 + round(Int, (x[i] - x0)/dx)*dx, x[i], rtol=rtol) == false
-            return false
-        end
-    end
-    true
-end
-
-function allongrid(dz::T, dy::T, dx::T, z0::Float64, y0::Float64, x0::Float64, z::Array{Float64,1}, y::Array{Float64,1}, x::Array{Float64,1}; rtol=1e-6) where T
-    for i = 1:length(z)
-        if isapprox(z0 + round(Int, (z[i] - z0)/dz)*dz, z[i], rtol=rtol) == false
-            return false
-        end
-        if isapprox(y0 + round(Int, (y[i] - y0)/dy)*dy, y[i], rtol=rtol) == false
-            return false
-        end
-        if isapprox(x0 + round(Int, (x[i] - x0)/dx)*dx, x[i], rtol=rtol) == false
-            return false
-        end
-    end
-    true
-end
-
-function injectdata!(field::Array{T,2}, data::Array{T,2}, it::Integer, iz::Array{Int64,1}, ix::Array{Int64,1}, c::Array{T,1}, language::Language=LangC(), nthreads::Int=Sys.CPU_THREADS) where T
-    if isa(language, LangC)
-        if T == Float32
-            ccall(
-                (:injectdata_2d_ongrid_float, libspacetime),
-                Cvoid,
-                (Ptr{Cfloat}, Ptr{Cfloat}, Ptr{Cfloat}, Ptr{Clong}, Ptr{Clong}, Csize_t, Csize_t,      Csize_t,   Csize_t,       Csize_t,            Csize_t),
-                 field,       data,        c,           iz,         ix,         it,      size(data,1), length(c), size(field,1), size(field,2),      nthreads
-            )
-        else
-            ccall(
-                (:injectdata_2d_ongrid_double, libspacetime),
-                Cvoid,
-                (Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Clong}, Ptr{Clong}, Csize_t, Csize_t,      Csize_t,   Csize_t,       Csize_t,       Csize_t),
-                 field,       data,          c,            iz,         ix,         it,      size(data,1), length(c), size(field,1), size(field,2), nthreads
-            )
-        end
-        return
-    end
-
-    @inbounds for i = 1:length(iz)
-        field[iz[i],ix[i]] += c[i]*data[it,i]
-    end
-end
-
-function injectdata!(field::Array{T,3}, data::Array{T,2}, it::Integer, iz::Array{Int64,1}, iy::Array{Int64,1}, ix::Array{Int64,1}, c::Array{T,1}, language::Language=LangC(), nthreads::Int=Sys.CPU_THREADS) where T
-    if isa(language, LangC)
-        if T == Float32
-            ccall(
-                (:injectdata_3d_ongrid_float, libspacetime),
-                Cvoid,
-                (Ptr{Cfloat}, Ptr{Cfloat}, Ptr{Cfloat}, Ptr{Clong}, Ptr{Clong}, Ptr{Clong}, Csize_t, Csize_t,      Csize_t,   Csize_t,       Csize_t,       Csize_t,       Csize_t),
-                 field,       data,        c,           iz,         iy,         ix,         it,      size(data,1), length(c), size(field,1), size(field,2), size(field,3), nthreads
-            )
-        else
-            ccall(
-                (:injectdata_3d_ongrid_double, libspacetime),
-                Cvoid,
-                (Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Clong}, Ptr{Clong}, Ptr{Clong}, Csize_t, Csize_t,      Csize_t,   Csize_t,       Csize_t,       Csize_t,       Csize_t),
-                 field,       data,          c,            iz,         iy,         ix,         it,      size(data,1), length(c), size(field,1), size(field,2), size(field,3), nthreads
-            )
-        end
-        return
-    end
-
-    @inbounds for i = 1:length(iz)
-        field[iz[i],iy[i],ix[i]] += c[i]*data[it,i]
-    end
-end
-
-function extractdata!(data::Array{T,2}, field::Array{T,2}, it::Integer, iz::Array{Int64,1}, ix::Array{Int64,1}, c::Array{T,1}, language::Language=LangC(), nthreads::Int=Sys.CPU_THREADS) where T
-    if isa(language, LangC)
-        if T == Float32
-            ccall(
-                (:extractdata_2d_ongrid_float, libspacetime),
-                Cvoid,
-                (Ptr{Cfloat}, Ptr{Cfloat}, Ptr{Cfloat}, Ptr{Clong}, Ptr{Clong}, Clong, Clong,        Clong,     Clong,         Clong,         Clong),
-                 data,        field,       c,           iz,         ix,         it,    size(data,1), length(c), size(field,1), size(field,2), nthreads
-            )
-        else
-            ccall(
-                (:extractdata_2d_ongrid_double, libspacetime),
-                Cvoid,
-                (Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Clong}, Ptr{Clong}, Clong, Clong,        Clong,     Clong,         Clong,         Clong),
-                 data,         field,        c,            iz,         ix,         it,    size(data,1), length(c), size(field,1), size(field,2), nthreads
-            )
-        end
-        return
-    end
-    @inbounds for i = 1:length(iz)
-        data[it,i] += c[i]*field[iz[i],ix[i]]
-    end
-end
-
-function extractdata!(data::Array{T,2}, field::Array{T,3}, it::Integer, iz::Array{Int64,1}, iy::Array{Int64,1}, ix::Array{Int64,1}, c::Array{T,1}, language::Language=LangC(), nthreads::Int=Sys.CPU_THREADS) where T
-    if isa(language, LangC)
-        if T == Float32
-            ccall(
-                (:extractdata_3d_ongrid_float, libspacetime),
-                Cvoid,
-                (Ptr{Cfloat}, Ptr{Cfloat}, Ptr{Cfloat}, Ptr{Clong}, Ptr{Clong}, Ptr{Clong}, Clong, Clong,        Clong,     Clong,         Clong,         Clong,         Clong),
-                 data,        field,       c,           iz,         iy,         ix,         it,    size(data,1), length(c), size(field,1), size(field,2), size(field,3), nthreads
-            )
-        else
-            ccall(
-                (:extractdata_3d_ongrid_double, libspacetime),
-                Cvoid,
-                (Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Clong}, Ptr{Clong}, Ptr{Clong}, Clong, Clong,        Clong,     Clong,         Clong,         Clong,         Clong),
-                 data,         field,        c,            iz,         iy,         ix,         it,    size(data,1), length(c), size(field,1), size(field,2), size(field,3), nthreads
-            )
-        end
-        return
-    end
-    @inbounds for i = 1:length(iz)
-        data[it,i] += c[i]*field[iz[i],iy[i],ix[i]]
-    end
+function extractdata!(data::Array{T,2}, field::Array{T}, it, points::Vector{<:SourcePoint}, nthreads=Sys.CPU_THREADS) where {T}
+    blocks = receiver_blocking(points, nthreads)
+    extractdata!(data, field, it, blocks, nthreads)
 end
 
 #
