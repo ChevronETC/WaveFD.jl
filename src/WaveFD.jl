@@ -22,6 +22,7 @@ abstract type ImagingCondition end
 struct ImagingConditionStandard <: ImagingCondition end
 struct ImagingConditionWaveFieldSeparationFWI <: ImagingCondition end
 struct ImagingConditionWaveFieldSeparationRTM <: ImagingCondition end
+struct ImagingConditionWaveFieldSeparationMIX <: ImagingCondition end
 
 include("stencil.jl")
 include("spacetime.jl")
