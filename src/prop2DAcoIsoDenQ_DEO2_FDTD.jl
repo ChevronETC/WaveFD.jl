@@ -120,6 +120,28 @@ function adjointBornAccumulation!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD, modeltype::P
         (Ptr{Cvoid}, Ptr{Cfloat}, Ptr{Cfloat},      Clong),
          prop.p,     dmodel["v"], wavefields["pspace"], 0)
  end
+ 
+# mixed imaging conditions
+function adjointBornAccumulation!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD, modeltype::Prop2DAcoIsoDenQ_DEO2_FDTD_Model_V, imagingcondition::ImagingConditionWaveFieldSeparationMIX, dmodel, wavefields)
+    dmodel_all = Dict("v"=>dmodel["all_v"])
+    dmodel_rtm = Dict("v"=>dmodel["rtm_v"])
+    adjointBornAccumulation!(prop, modeltype, WaveFD.ImagingConditionStandard(), dmodel_all, wavefields)
+    adjointBornAccumulation!(prop, modeltype, WaveFD.ImagingConditionWaveFieldSeparationRTM(), dmodel_rtm, wavefields)
+end
+
+function adjointBornAccumulation!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD, modeltype::Prop2DAcoIsoDenQ_DEO2_FDTD_Model_VB, imagingcondition::ImagingConditionWaveFieldSeparationMIX, dmodel, wavefields)
+    dmodel_all = Dict("v"=>dmodel["all_v"], "b"=>dmodel["all_b"])
+    dmodel_rtm = Dict("v"=>dmodel["rtm_v"], "b"=>dmodel["rtm_b"])
+    adjointBornAccumulation!(prop, modeltype, WaveFD.ImagingConditionStandard(), dmodel_all, wavefields)
+    adjointBornAccumulation!(prop, modeltype, WaveFD.ImagingConditionWaveFieldSeparationRTM(), dmodel_rtm, wavefields)
+end
+
+function adjointBornAccumulation!(prop::Prop2DAcoIsoDenQ_DEO2_FDTD, modeltype::Prop2DAcoIsoDenQ_DEO2_FDTD_Model_B, imagingcondition::ImagingConditionWaveFieldSeparationMIX, dmodel, wavefields)
+    dmodel_all = Dict("b"=>dmodel["all_b"])
+    dmodel_rtm = Dict("b"=>dmodel["rtm_b"])
+    adjointBornAccumulation!(prop, modeltype, WaveFD.ImagingConditionStandard(), dmodel_all, wavefields)
+    adjointBornAccumulation!(prop, modeltype, WaveFD.ImagingConditionWaveFieldSeparationRTM(), dmodel_rtm, wavefields)
+end
 
 function show(io::IO, prop::Prop2DAcoIsoDenQ_DEO2_FDTD)
     nx = ccall((:Prop2DAcoIsoDenQ_DEO2_FDTD_getNx, libprop2DAcoIsoDenQ_DEO2_FDTD), (Clong), (Ptr{Cvoid},), prop.p)
