@@ -27,6 +27,8 @@ target_link_libraries(prop2DAcoTTIDenQ_DEO2_FDTD PUBLIC OpenMP::OpenMP_CXX PkgCo
 target_link_libraries(prop3DAcoIsoDenQ_DEO2_FDTD PUBLIC OpenMP::OpenMP_CXX PkgConfig::FFTW3F)
 target_link_libraries(prop3DAcoVTIDenQ_DEO2_FDTD PUBLIC OpenMP::OpenMP_CXX PkgConfig::FFTW3F)
 target_link_libraries(prop3DAcoTTIDenQ_DEO2_FDTD PUBLIC OpenMP::OpenMP_CXX PkgConfig::FFTW3F)
+target_link_libraries(illumination PUBLIC OpenMP::OpenMP_CXX)
+target_link_libraries(spacetime PUBLIC OpenMP::OpenMP_CXX)
 
 install(TARGETS prop2DAcoIsoDenQ_DEO2_FDTD prop2DAcoVTIDenQ_DEO2_FDTD prop2DAcoTTIDenQ_DEO2_FDTD prop3DAcoIsoDenQ_DEO2_FDTD prop3DAcoVTIDenQ_DEO2_FDTD prop3DAcoTTIDenQ_DEO2_FDTD illumination spacetime
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
