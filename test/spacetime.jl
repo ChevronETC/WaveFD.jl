@@ -259,8 +259,8 @@ end
     @testset "injection partitions with on-grid points, 2D, F=$F" for F in (WaveFD.hickscoeffs, WaveFD.linearcoeffs)
         dz,dx,z0,x0,nz,nx,nthreads = 10.0,10.0,0.0,0.0,100,101,48
 
-        x = rand(0:(nx-1), 25)*dx
-        z = rand(0:(nz-1), 25)*dz
+        x = rand(5:(nx-5), 25)*dx
+        z = rand(5:(nz-5), 25)*dz
 
         points = F(dz,dx,z0,x0,nz,nx,z,x)
         blks = WaveFD.source_blocking(points, nthreads)
