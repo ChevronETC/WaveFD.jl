@@ -276,9 +276,9 @@ end
     @testset "injection partitions with on-grid points, 3D, F=$F" for F in (WaveFD.hickscoeffs, WaveFD.linearcoeffs)
         dz,dy,dx,z0,y0,x0,nz,ny,nx,nthreads = 10.0,10.0,10.0,0.0,0.0,0.0,100,101,102,48
 
-        x = rand(1:(nx-2), 25)*dx
-        y = rand(1:(ny-2), 25)*dy
-        z = rand(1:(nz-2), 25)*dz
+        x = rand(5:(nx-5), 25)*dx
+        y = rand(5:(ny-5), 25)*dy
+        z = rand(5:(nz-5), 25)*dz
 
         points = F(dz,dy,dx,z0,y0,x0,nz,ny,nx,z,y,x)
         blks = WaveFD.source_blocking(points, nthreads)
@@ -341,6 +341,7 @@ end
     end
 
     @testset "data injection/extrapolation, 2D off-grid, inner product, T=$(T), F=$(F), nthreads=$nthreads" for T in (Float32,Float64), F in (WaveFD.hickscoeffs, WaveFD.linearcoeffs), alg=(WaveFD.LangC(),WaveFD.LangJulia()), nthreads=(1,4)
+        Random.seed!(0)
         nr = 10
         nz, nx = 100, 100
         dz, dx = 10.0, 10.0
