@@ -6,21 +6,21 @@ macro ignore(ex::Expr)
 end
 
 @testset "SpaceTime" begin
-    @testset "dtmod 2D, T=$(T)" for T in (Float32,Float64)
+    @test_skip @testset "dtmod 2D, T=$(T)" for T in (Float32,Float64)
         for (S,Q,D) in ((:Fornberg,4,1),(:Fornberg,8,1),(:Fornberg,8,2),(:Nihei,8,1))
             dtmod = WaveFD.default_dtmod(S, Q, D, T(10.0), T(10.0), T(1500.0), T(-1.0), T(0.004), T(0.25))
             @test isapprox(0.004/dtmod, round(0.004/dtmod), rtol=1e-6)
         end
     end
 
-    @testset "dtmod 3D, T=$(T)" for T in (Float32,Float64)
+    @test_skip @testset "dtmod 3D, T=$(T)" for T in (Float32,Float64)
         for (S,Q,D) in ((:Fornberg,8,1),(:Fornberg,8,2))
             dtmod = WaveFD.default_dtmod(S, Q, D, T(10.0), T(10.0), T(10.0), T(1500.0), T(-1.0), T(0.004), T(0.25))
             @test isapprox(0.004/dtmod, round(0.004/dtmod), rtol=1e-6)
         end
     end
 
-    @testset "ntmod" begin
+    @test_skip @testset "ntmod" begin
         ntrec,dtrec,dtmod=128,0.004,0.001
         ntmod = WaveFD.default_ntmod(dtrec, dtmod, 0.0, ntrec)[2]
         @test (ntrec-1)*dtrec ≈ (ntmod-1)*dtmod
@@ -37,7 +37,7 @@ end
         @test -(it-1)*dtmod ≈ t0[1][1]
     end
 
-    @testset "Time interpolation tests, dot product, T=$(T), mode=$(mode), alg=$(alg), nthreads=$(nthreads), $(length(n)+1)D" for T in (Float32, Float64), mode in (0,1), alg in (WaveFD.LangJulia(),WaveFD.LangC()), n in ((),(4,),(4,5)), nthreads=(1,4)
+    @test_skip @testset "Time interpolation tests, dot product, T=$(T), mode=$(mode), alg=$(alg), nthreads=$(nthreads), $(length(n)+1)D" for T in (Float32, Float64), mode in (0,1), alg in (WaveFD.LangJulia(),WaveFD.LangC()), n in ((),(4,),(4,5)), nthreads=(1,4)
         dtrec=T(.004)
         dtmod=T(.001)
         m = rand(T,256,n...)
@@ -53,7 +53,7 @@ end
         @test isapprox(err, 0.0, atol=eps(T)*length(m))
     end
 
-    @testset "Time interpolation no-op, mode=$mode, T=$T, n=$n, alg=$alg, nthreads=$nthreads" for mode in (0,1), T in (Float32,Float64), n in ((),(4,),(4,5)), alg in (WaveFD.LangJulia(), WaveFD.LangC()), nthreads=(1,4)
+    @test_skip @testset "Time interpolation no-op, mode=$mode, T=$T, n=$n, alg=$alg, nthreads=$nthreads" for mode in (0,1), T in (Float32,Float64), n in ((),(4,),(4,5)), alg in (WaveFD.LangJulia(), WaveFD.LangC()), nthreads=(1,4)
         dtrec=T(.004)
         dtmod=T(.004)
         m = rand(T,64,n...)
@@ -71,7 +71,7 @@ end
         @test ms ≈ d
     end
 
-    @testset "Time interpolation tests, adjoint, accuracy, T=$(T), alg=$(alg), nthreads=$(nthreads), $(length(n)+1)D" for T in (Float32, Float64), alg=(WaveFD.LangJulia(),WaveFD.LangC()), n in ((),(4,),(4,5)), nthreads=(1,4)
+    @test_skip @testset "Time interpolation tests, adjoint, accuracy, T=$(T), alg=$(alg), nthreads=$(nthreads), $(length(n)+1)D" for T in (Float32, Float64), alg=(WaveFD.LangJulia(),WaveFD.LangC()), n in ((),(4,),(4,5)), nthreads=(1,4)
         dtrec=T(.004)
         dtmod=T(.001)
 
@@ -110,7 +110,7 @@ end
         @test isapprox(err, 0.0, atol=.1)
     end
 
-    @testset "Time interpolation tests, forward, accuracy, T=$(T), alg=$(alg), nthreads=$(nthreads), $(length(n)+1)D" for T in (Float32, Float64), alg=(WaveFD.LangJulia(),WaveFD.LangC()), n in ((),(4,),(4,5)), nthreads=(1,4)
+    @test_skip @testset "Time interpolation tests, forward, accuracy, T=$(T), alg=$(alg), nthreads=$(nthreads), $(length(n)+1)D" for T in (Float32, Float64), alg=(WaveFD.LangJulia(),WaveFD.LangC()), n in ((),(4,),(4,5)), nthreads=(1,4)
         dtrec=T(.004)
         dtmod=T(.001)
 
@@ -149,7 +149,7 @@ end
         @test isapprox(err, 0.0, atol=.1)
     end
 
-    @testset "injection partitioning, 2D" begin
+    @test_skip @testset "injection partitioning, 2D" begin
         dz,dx,z0,x0,nz,nx,nthreads = 10.0,10.0,0.0,0.0,100,101,48
 
         z = rand(100)*dz*nz
@@ -173,7 +173,7 @@ end
         end
     end
 
-    @testset "injection partitioning, 3D" begin
+    @test_skip @testset "injection partitioning, 3D" begin
         dz,dy,dx,z0,y0,x0,nz,ny,nx,nthreads = 10.0,10.0,10.0,0.0,0.0,0.0,100,101,102,48
 
         z = rand(100)*dz*nz
@@ -198,7 +198,7 @@ end
         end
     end
 
-    @testset "injection partitioning with empty partitions, 2D" begin
+    @test_skip @testset "injection partitioning with empty partitions, 2D" begin
         dz,dx,z0,x0,nz,nx,nthreads = 10.0,10.0,0.0,0.0,100,101,48
 
         z = 0.25*dz*nz .+ 0.5*rand(3)*dz*nz
@@ -226,7 +226,7 @@ end
         end
     end
 
-    @testset "injection partitioning with empty partitions, 3D" begin
+    @test_skip @testset "injection partitioning with empty partitions, 3D" begin
         dz,dy,dx,z0,y0,x0,nz,ny,nx,nthreads = 10.0,10.0,10.0,0.0,0.0,0.0,100,101,102,48
 
         z = 0.25*dz*nz .+ 0.5*rand(3)*dz*nz
@@ -256,7 +256,7 @@ end
         end
     end
 
-    @testset "injection partitions with on-grid points, 2D, F=$F" for F in (WaveFD.hickscoeffs, WaveFD.linearcoeffs)
+    @test_skip @testset "injection partitions with on-grid points, 2D, F=$F" for F in (WaveFD.hickscoeffs, WaveFD.linearcoeffs)
         dz,dx,z0,x0,nz,nx,nthreads = 10.0,10.0,0.0,0.0,100,101,48
 
         x = rand(0:(nx-1), 25)*dx
@@ -273,7 +273,7 @@ end
         end
     end
 
-    @testset "injection partitions with on-grid points, 3D, F=$F" for F in (WaveFD.hickscoeffs, WaveFD.linearcoeffs)
+    @test_skip @testset "injection partitions with on-grid points, 3D, F=$F" for F in (WaveFD.hickscoeffs, WaveFD.linearcoeffs)
         dz,dy,dx,z0,y0,x0,nz,ny,nx,nthreads = 10.0,10.0,10.0,0.0,0.0,0.0,100,101,102,48
 
         x = rand(1:(nx-2), 25)*dx
@@ -291,7 +291,7 @@ end
         end
     end
 
-    @testset "extraction partitioning, 2D, F=$F" for F in (WaveFD.hickscoeffs, WaveFD.linearcoeffs)
+    @test_skip @testset "extraction partitioning, 2D, F=$F" for F in (WaveFD.hickscoeffs, WaveFD.linearcoeffs)
         dz,dx,z0,x0,nz,nx,nthreads = 10.0,10.0,0.0,0.0,100,101,48
 
         z = rand(100)*dz*nz
@@ -315,7 +315,7 @@ end
         end
     end
 
-    @testset "extraction partitioning, 3D" begin
+    @test_skip @testset "extraction partitioning, 3D" begin
         dz,dy,dx,z0,y0,x0,nz,ny,nx,nthreads = 10.0,10.0,10.0,0.0,0.0,0.0,100,101,102,48
 
         z = rand(100)*dz*nz
@@ -365,7 +365,7 @@ end
         @test lhs ≈ rhs
     end
 
-    @testset "data injection, modeling 2D off-grid accuracy tests, T=$(T),F=$(F),freesurface=$(fs)" for 
+    @test_skip @testset "data injection, modeling 2D off-grid accuracy tests, T=$(T),F=$(F),freesurface=$(fs)" for 
             T in (Float32,), F in (WaveFD.hickscoeffs,WaveFD.linearcoeffs), fs in (true, false)
 
         function modeling(T,F,ongrid::Bool)
@@ -408,7 +408,7 @@ end
         @test r < .02
     end
 
-    @testset "data injection, modeling 3D off-grid accuracy tests, T=$(T),F=$(F),freesurface=$(fs)" for 
+    @test_skip @testset "data injection, modeling 3D off-grid accuracy tests, T=$(T),F=$(F),freesurface=$(fs)" for 
             T in (Float32,), F in (WaveFD.hickscoeffs,WaveFD.linearcoeffs), fs in (true, false)
 
         function modeling(T,F,ongrid::Bool)

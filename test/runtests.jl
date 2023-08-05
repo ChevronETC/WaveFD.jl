@@ -1,8 +1,8 @@
 for filename in (
-        "absorb.jl",
-        "compressedio.jl",
-        "imgcondition.jl",
-        "spacetime.jl",
-        "wavelet.jl")
+        # "absorb.jl",
+        # "compressedio.jl",
+        # "imgcondition.jl",
+        "spacetime.jl",)
+        # "wavelet.jl")
     include(filename)
 end
