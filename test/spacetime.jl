@@ -341,6 +341,7 @@ end
     end
 
     @testset "data injection/extrapolation, 2D off-grid, inner product, T=$(T), F=$(F), nthreads=$nthreads" for T in (Float32,Float64), F in (WaveFD.hickscoeffs, WaveFD.linearcoeffs), alg=(WaveFD.LangC(),WaveFD.LangJulia()), nthreads=(1,4)
+        Random.seed!(0)
         nr = 10
         nz, nx = 100, 100
         dz, dx = 10.0, 10.0
