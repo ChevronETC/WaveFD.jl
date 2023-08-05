@@ -351,6 +351,9 @@ end
         z, x = z1 .+ (z2 - z1) .* rand(nr), x1 .+ (x2 - x1) .* rand(nr)
         points = F(T(dz), T(dx), z0, x0, nz, nx, z, x)
 
+        @show x
+        @show z
+
         f1 = rand(T, 1, nr)
         f2 = zeros(T, 1, nr)
         g1 = rand(T, nz, nx)
