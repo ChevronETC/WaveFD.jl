@@ -129,6 +129,19 @@ end
 WaveletMinPhaseOrmsby(;a = 1.0, f1 = 5.0, f2 = 10.0, f3 = 40.0, f4 = 45.0, tmax = -1.0, integrate = false) = WaveletMinPhaseOrmsby(a, f1, f2, f3, f4, tmax, integrate)
 copy(w::WaveletMinPhaseOrmsby) = WaveletMinPhaseOrmsby(w.a,w.f1,w.f2,w.f3,w.f4,w.tmax,w.integrate)
 
+mutable struct WaveletCausalOrmsby <: Wavelet
+    a::Float64
+    f1::Float64
+    f2::Float64
+    f3::Float64
+    f4::Float64
+    tmax::Float64
+    integrate::Bool
+    tol::Float64
+end
+WaveletCausalOrmsby(;a = 1.0, f1 = 5.0, f2 = 10.0, f3 = 40.0, f4 = 45.0, tmax = -1.0, integrate = false,tol=1e-4) = WaveletCausalOrmsby(a, f1, f2, f3, f4, tmax, integrate,tol)
+copy(w::WaveletCausalOrmsby) = WaveletCausalOrmsby(w.a,w.f1,w.f2,w.f3,w.f4,w.tmax,w.integrate,w.tol)
+
 function get(w::WaveletSine, t::Array{T}) where T<:AbstractFloat
     wav = T(w.a) .* sin.(T(2 * pi * w.f) .* t)
     w.integrate ? cumsum(wav, dims=1) : wav
@@ -185,5 +198,15 @@ function get(w::WaveletMinPhaseOrmsby, t::Array{T}) where T<:AbstractFloat
     wav .*= w.a
     wav .-= mean(wav)
     wav .*= costap(w,t)
+    w.integrate ? cumsum(wav, dims=1) : wav
+end
+
+function get(w::WaveletCausalOrmsby, t::Array{T}) where T<:AbstractFloat
+    wav = get(WaveletOrmsby(w.a,w.f1,w.f2,w.f3,w.f4,-1.0,false),t .- mean(t))
+    idx = findall(ww->abs(ww)>w.tol*w.a,wav)[1]
+    rng = idx:length(wav)
+    wav[1:length(rng)] = wav[rng]
+    wav[length(rng)+1:end] .= 0.0
+    wav .*= WaveFD.costap(w,t)
     w.integrate ? cumsum(wav, dims=1) : wav
 end

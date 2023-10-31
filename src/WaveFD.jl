@@ -64,6 +64,7 @@ WaveletMinPhaseRicker,
 WaveletCausalRicker,
 WaveletOrmsby,
 WaveletMinPhaseOrmsby,
+WaveletCausalOrmsby,
 WaveletRicker,
 WaveletSine
 
