@@ -106,6 +106,201 @@ end
 """
 default_ntmod(dtrec::Real, dtmod::Real, ntrec::Int) = default_ntmod(dtrec, dtmod, 0.0, ntrec)[2]
 
+
+
+#
+# time shift codes
+#
+mutable struct TimeShift{T<:Real}
+    h::Vector{T}
+    nshift::Int
+    shift_fraction::T
+    bc::AbstractString
+end
+
+"""
+    h = WaveFD.shiftfilter(shift; [length=10, α=0.9, bc="zero"])
+
+Build a cosine tapered sinc filter for shifting an array by a decimal number of samples. The optional parameters are:
+
+* `length::Int` length of the filter (better to be an even number)
+* `α::Real` parameter to control the strenght of the cosine taper. α=0 -> no taper
+* `bc::String` how to deal with the edges. Currently the two options are "zero" and "nearest".
+
+# Notes
+It is checked that `0 <= α <= 1`.
+The shift is split into integer number of samples and a residual fractional sample
+"""
+function shiftfilter(shift::T; length::Int=12, α::Real=1.0, bc::AbstractString="zero") where T<:Real
+
+    @assert 0 <= α <= 1
+    @assert bc ∈ ["zero","nearest"]
+    nshift = floor(shift)
+    shift_fraction = shift - nshift
+
+    hl = div(length,2) + length % 2
+    j = [1:length;] .- (div(length,2) + 1 )
+    a = sinc.(j .+ shift_fraction) .* ((1-α) .+ α/2*(1 .+ cos.(π*(j .+ shift_fraction)/hl)))
+    a = a./sum(a)
+
+    return TimeShift{T}(a, nshift, shift_fraction, bc)
+end
+
+"""
+    WaveFD.shiftforward!(h, d, m, bc)
+
+Shift `m::Array{T,N}` to `d::Array{T,N}` by a decimal number of samples. `d` and `m` have the same size.
+A positive shift will delay the trace. `h` is built using `WaveFD.shiftfilter`.  For example:
+
+    WaveFD.shiftforward!(WaveFD.shiftfilter(13.34, length=12, α=1.0, bc="zero"), d, m)
+
+Note that `N=1`, `N=2` or `N=3` are supported. If `N=2` or `N=3`, then interpolation is done along the fast dimension.
+"""
+function shiftforward!(H::TimeShift{T0}, d::StridedArray{T,1}, m::StridedArray{T,1}) where {T0<:Real, T<:Real}
+    
+    @assert length(m) == length(d)
+
+    if H.nshift==0 && H.shift_fraction ≈ 0
+        d .= m
+        return nothing
+    end
+
+    n = length(m)
+    nshift = H.nshift
+    nfilter = length(H.h)
+    n_half_filter = div(nfilter,2) + nfilter % 2
+    bc_multiplier = (H.bc=="nearest") ? 1 : 0
+
+    @assert n > n_half_filter
+    @assert nshift < n 
+
+    # create a padded array
+    mpad = Vector{T}(undef, n + 2*n_half_filter)
+    mpad[1+n_half_filter:n+n_half_filter] = m[:]
+    mpad[1:n_half_filter] .= bc_multiplier * m[1]
+    mpad[n+n_half_filter+1:end] .= bc_multiplier * m[n]
+
+    # shift the padded array by a fraction of a sample
+    fill!(d, 0.0)
+    if H.shift_fraction ≈ 0
+        d[:] = mpad[1+n_half_filter:n+n_half_filter]
+    else
+        for i in 1:n
+            for j in 1:nfilter
+                d[i] += mpad[i+n_half_filter + j - div(nfilter,2) - 1] * H.h[j] 
+            end
+        end
+    end
+
+    # shift by an integer number of samples then extrapolate first or last sample
+    if nshift > 0
+        d[1+nshift:n] = d[1:n-nshift]
+        d[1:nshift] .= bc_multiplier * d[1]
+    elseif nshift<0
+        d[1:n+nshift] = d[1-nshift:n]
+        d[n+nshift+1:n] .= bc_multiplier * d[n]
+    end
+    return nothing
+end
+
+
+"""
+    WaveFD.shiftadjoint!(h, m, d, bc)
+
+Adjoint of WaveFD.shiftforward. Depending on the filter, it is "almost" like a shifting with negative shift used in forward mode (inverse shifting). 
+"""
+function shiftadjoint!(H::TimeShift{T0}, m::StridedArray{T,1}, d::StridedArray{T,1}) where {T0<:Real, T<:Real}
+    
+    @assert length(m) == length(d)
+
+    if H.nshift==0 && H.shift_fraction ≈ 0
+        m .= d
+        return nothing
+    end
+
+    n = length(m)
+    nshift = H.nshift
+    nfilter = length(H.h)
+    n_half_filter = div(nfilter,2) + nfilter % 2
+    bc_multiplier = (H.bc=="nearest") ? 1 : 0
+
+    @assert n > n_half_filter
+    @assert nshift < n
+
+    # shift by integer number of samples and extrapolate
+    fill!(m,0)
+    if nshift > 0
+        m[1:n-nshift] = d[1+nshift:n]
+        m[n-nshift] += nshift*bc_multiplier * d[n]
+    elseif nshift<0
+        m[1-nshift:n] = d[1:n+nshift]
+        m[1-nshift] -= nshift*bc_multiplier * d[1]
+    end
+
+    # create a padded array
+    mpad = Vector{T}(undef, n + 2*n_half_filter)
+    
+    # shift by a fraction of a sample
+    fill!(mpad, 0.0)
+    if H.shift_fraction ≈ 0
+        mpad[1+n_half_filter:n+n_half_filter] = m[:]
+    else
+        for i in 1:n
+            for j in 1:nfilter
+                mpad[i+n_half_filter + j - div(nfilter,2) - 1] += m[i] * H.h[j]
+            end
+        end
+    end
+
+    # finalize
+    m[1:n] = mpad[1+n_half_filter:n+n_half_filter]
+    m[1] += bc_multiplier*n_half_filter * mpad[1+n_half_filter]
+    m[n] += bc_multiplier*n_half_filter * mpad[n+n_half_filter]
+    return nothing
+end
+
+function shiftforward!(H::TimeShift{T0}, d::StridedArray{T,2}, m::StridedArray{T,2}) where {T0<:Real, T<:Real}
+    Threads.@threads for i2 = 1:size(m,2)
+        d_trace = @view d[:,i2]
+        m_trace = @view m[:,i2]
+        shiftforward!(H, d_trace, m_trace)
+    end
+    nothing
+end
+
+function shiftforward!(H::TimeShift{T0}, d::StridedArray{T,3}, m::StridedArray{T,3}) where {T0<:Real, T<:Real}
+    Threads.@threads for i23 = 1:(size(m,2)*size(m,3)) # combine dimensions 2 and 3 because @threads doesn't support yet nested loops
+        i3 = div(i23-1,size(m,2)) + 1
+        i2 = i23 - (i3-1) * size(m,2)
+        d_trace = @view d[:,i2,i3]
+        m_trace = @view m[:,i2,i3]
+        shiftforward!(H, d_trace, m_trace)
+    end
+    nothing
+end
+
+function shiftadjoint!(H::TimeShift{T0}, m::StridedArray{T,2}, d::StridedArray{T,2}) where {T0<:Real, T<:Real}
+    Threads.@threads for i2 = 1:size(m,2)
+        d_trace = @view d[:,i2]
+        m_trace = @view m[:,i2]
+        shiftadjoint!(H, m_trace, d_trace)
+    end
+    nothing
+end
+
+function shiftadjoint!(H::TimeShift{T0}, m::StridedArray{T,3}, d::StridedArray{T,3}) where {T0<:Real, T<:Real}
+    Threads.@threads for i23 = 1:(size(m,2)*size(m,3))
+        i3 = div(i23-1,size(m,2)) + 1
+        i2 = i23 - (i3-1) * size(m,2)
+        d_trace = @view d[:,i2,i3]
+        m_trace = @view m[:,i2,i3]
+        shiftadjoint!(H, m_trace, d_trace)
+    end
+    nothing
+end
+
+
+
 #
 # time interpolation codes
 #

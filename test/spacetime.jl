@@ -37,6 +37,22 @@ end
         @test -(it-1)*dtmod ≈ t0[1][1]
     end
 
+    @testset "Time shift test, dot product, T=$(T), $(length(n)+1)D, shift=$(shift)" for T in (Float32, Float64), n in ((),(4,),(4,5)), shift in (0, 9, -4, 7.3, -5.7)
+        dtrec=T(.004)
+        dtmod=T(.001)
+        m = rand(T,256,n...)
+        ms = rand(T,256,n...)
+        d = rand(T,256,n...)
+        ds = rand(T,256,n...)
+        WaveFD.shiftforward!(WaveFD.shiftfilter(shift), ds, m)
+        WaveFD.shiftadjoint!(WaveFD.shiftfilter(shift), ms, d)
+        rhs = dot(ds,d)
+        lhs = dot(m,ms)
+        err = norm(rhs-lhs)
+        write(stdout, "T=$(T), lhs=$(lhs), rhs=$(rhs), $(length(n)+1)D, shift=$(shift) samples, err=$(err)\n")
+        @test isapprox(err, 0.0, atol=eps(T)*length(m))
+    end
+
     @testset "Time interpolation tests, dot product, T=$(T), mode=$(mode), alg=$(alg), nthreads=$(nthreads), $(length(n)+1)D" for T in (Float32, Float64), mode in (0,1), alg in (WaveFD.LangJulia(),WaveFD.LangC()), n in ((),(4,),(4,5)), nthreads=(1,4)
         dtrec=T(.004)
         dtmod=T(.001)
