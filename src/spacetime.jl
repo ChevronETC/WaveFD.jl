@@ -235,6 +235,8 @@ function shiftadjoint!(H::TimeShift{T0}, m::StridedArray{T,1}, d::StridedArray{T
     elseif nshift<0
         m[1-nshift:n] = d[1:n+nshift]
         m[1-nshift] -= nshift*bc_multiplier * d[1]
+    else
+        m .= d
     end
 
     # create a padded array

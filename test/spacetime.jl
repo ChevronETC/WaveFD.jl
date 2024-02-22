@@ -37,9 +37,7 @@ end
         @test -(it-1)*dtmod ≈ t0[1][1]
     end
 
-    @testset "Time shift test, dot product, T=$(T), $(length(n)+1)D, shift=$(shift)" for T in (Float32, Float64), n in ((),(4,),(4,5)), shift in (0, 9, -4, 7.3, -5.7)
-        dtrec=T(.004)
-        dtmod=T(.001)
+    @testset "Time shift test, dot product, T=$(T), $(length(n)+1)D, shift=$(shift)" for T in (Float32, Float64), n in ((),(4,),(4,5)), shift in (0, -0.5, 0.5, 9, -4, 7.3, -5.7)
         m = rand(T,256,n...)
         ms = rand(T,256,n...)
         d = rand(T,256,n...)
