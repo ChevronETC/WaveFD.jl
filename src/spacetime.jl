@@ -119,7 +119,7 @@ mutable struct TimeShift{T<:Real}
 end
 
 """
-    h = WaveFD.shiftfilter(shift; [length=10, α=0.9, bc="zero"])
+    h = WaveFD.shiftfilter(shift; [length=12, α=1.0, bc="zero"])
 
 Build a cosine tapered sinc filter for shifting an array by a decimal number of samples. The optional parameters are:
 
@@ -150,8 +150,9 @@ end
     WaveFD.shiftforward!(h, d, m, bc)
 
 Shift `m::Array{T,N}` to `d::Array{T,N}` by a decimal number of samples. `d` and `m` have the same size.
-A positive shift will delay the trace. `h` is built using `WaveFD.shiftfilter`.  For example:
+A positive shift will delay the trace. `h` is built using `WaveFD.shiftfilter`.  For examples:
 
+    WaveFD.shiftforward!(WaveFD.shiftfilter(-3.3), d, m)
     WaveFD.shiftforward!(WaveFD.shiftfilter(13.34, length=12, α=1.0, bc="zero"), d, m)
 
 Note that `N=1`, `N=2` or `N=3` are supported. If `N=2` or `N=3`, then interpolation is done along the fast dimension.
