@@ -124,12 +124,14 @@ end
 Build a cosine tapered sinc filter for shifting an array by a decimal number of samples. The optional parameters are:
 
 * `length::Int` length of the filter (better to be an even number)
-* `α::Real` parameter to control the strenght of the cosine taper. α=0 -> no taper
+* `α::Real` parameter to control the strength of the cosine taper. α=0 -> no taper
 * `bc::String` how to deal with the edges. Currently the two options are "zero" and "nearest".
 
 # Notes
 It is checked that `0 <= α <= 1`.
-The shift is split into integer number of samples and a residual fractional sample
+The taper is centered to the middle of the filter and goes all the way to the edges.
+For α = 1, the value of the taper at the edges is ≈ 0.
+The shift is split into integer number of samples and a residual fractional sample.
 """
 function shiftfilter(shift::T; length::Int=12, α::Real=1.0, bc::AbstractString="zero") where T<:Real
 
@@ -150,7 +152,9 @@ end
     WaveFD.shiftforward!(h, d, m, bc)
 
 Shift `m::Array{T,N}` to `d::Array{T,N}` by a decimal number of samples. `d` and `m` have the same size.
-A positive shift will delay the trace. `h` is built using `WaveFD.shiftfilter`.  For examples:
+A positive shift will delay the trace. `h` is built using `WaveFD.shiftfilter`. Both filter and amount 
+of shifting must be shorter than the arrays, otherwise, an assertion will fail. 
+For examples:
 
     WaveFD.shiftforward!(WaveFD.shiftfilter(-3.3), d, m)
     WaveFD.shiftforward!(WaveFD.shiftfilter(13.34, length=12, α=1.0, bc="zero"), d, m)
