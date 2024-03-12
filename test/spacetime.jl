@@ -81,7 +81,7 @@ end
         lhs = dot(m,ms)
         err = norm(rhs-lhs)
         write(stdout, "T=$(T), lhs=$(lhs), rhs=$(rhs), $(length(n)+1)D, shift=$(shift) samples, err=$(err)\n")
-        @test isapprox(err, 0.0, atol=2*eps(T)*length(m))
+        @test isapprox(err, 0.0, atol=eps(T)*length(m))
     end
 
     @testset "Time interpolation tests, dot product, T=$(T), mode=$(mode), alg=$(alg), nthreads=$(nthreads), $(length(n)+1)D" for T in (Float32, Float64), mode in (0,1), alg in (WaveFD.LangJulia(),WaveFD.LangC()), n in ((),(4,),(4,5)), nthreads=(1,4)
