@@ -111,10 +111,10 @@ default_ntmod(dtrec::Real, dtmod::Real, ntrec::Int) = default_ntmod(dtrec, dtmod
 #
 # time shift codes
 #
-struct TimeShift{T<:Real}
-    h::Vector{T}
+struct TimeShift
+    h::Vector{Real}
     nshift::Int
-    shift_fraction::T
+    shift_fraction::Real
     bc::AbstractString
 end
 
@@ -136,15 +136,15 @@ Build a cosine tapered sinc filter for shifting an array by a decimal number of 
 function shiftfilter(shift::T; length::Int=12, α::Real=1.0, bc::AbstractString="zero") where T<:Real
     @assert 0 <= α <= 1
     @assert bc ∈ ("zero","nearest")
-    nshift = floor(shift)
-    shift_fraction = shift - nshift
+    nshift = floor(Int, shift)
+    shift_fraction = Real(shift - nshift)
 
     hl = div(length,2) + length % 2
     j = [1:length;] .- (div(length,2) + 1 )
     a = sinc.(j .+ shift_fraction) .* ((1-α) .+ α/2*(1 .+ cos.(π*(j .+ shift_fraction)/hl)))
     a = a./sum(a)
 
-    TimeShift{T}(a, nshift, shift_fraction, bc)
+    TimeShift(a, nshift, shift_fraction, bc)
 end
 
 """
@@ -160,7 +160,7 @@ For examples:
 
 Note that `N=1`, `N=2` or `N=3` are supported. If `N=2` or `N=3`, then interpolation is done along the fast dimension.
 """
-function shiftforward!(H::TimeShift{<:Real}, d::StridedArray{T,1}, m::StridedArray{T,1}) where {T<:Real}
+function shiftforward!(H::TimeShift, d::StridedArray{T,1}, m::StridedArray{T,1}) where {T<:Real}
     @assert length(m) == length(d)
 
     if H.nshift == 0 && H.shift_fraction ≈ 0
@@ -213,7 +213,7 @@ end
 
 Adjoint of `WaveFD.shiftforward`. Depending on the filter, it is "almost" like a shifting with negative shift used in forward mode (inverse shifting). 
 """
-function shiftadjoint!(H::TimeShift{<:Real}, m::StridedArray{T,1}, d::StridedArray{T,1}) where {T<:Real}
+function shiftadjoint!(H::TimeShift, m::StridedArray{T,1}, d::StridedArray{T,1}) where {T<:Real}
     @assert length(m) == length(d)
 
     if H.nshift == 0 && H.shift_fraction ≈ 0
@@ -265,7 +265,7 @@ function shiftadjoint!(H::TimeShift{<:Real}, m::StridedArray{T,1}, d::StridedArr
     nothing
 end
 
-function shiftforward!(H::TimeShift{<:Real}, d::StridedArray{T,2}, m::StridedArray{T,2}) where {T<:Real}
+function shiftforward!(H::TimeShift, d::StridedArray{T,2}, m::StridedArray{T,2}) where {T<:Real}
     Threads.@threads for i2 = 1:size(m,2)
         d_trace = @view d[:,i2]
         m_trace = @view m[:,i2]
@@ -274,7 +274,7 @@ function shiftforward!(H::TimeShift{<:Real}, d::StridedArray{T,2}, m::StridedArr
     nothing
 end
 
-function shiftforward!(H::TimeShift{<:Real}, d::StridedArray{T,3}, m::StridedArray{T,3}) where {T<:Real}
+function shiftforward!(H::TimeShift, d::StridedArray{T,3}, m::StridedArray{T,3}) where {T<:Real}
     Threads.@threads for i3 = 1:size(m,3)
         for i2 = 1:size(m,2)
             d_trace = @view d[:,i2,i3]
@@ -285,7 +285,7 @@ function shiftforward!(H::TimeShift{<:Real}, d::StridedArray{T,3}, m::StridedArr
     nothing
 end
 
-function shiftadjoint!(H::TimeShift{<:Real}, m::StridedArray{T,2}, d::StridedArray{T,2}) where {T<:Real}
+function shiftadjoint!(H::TimeShift, m::StridedArray{T,2}, d::StridedArray{T,2}) where {T<:Real}
     Threads.@threads for i2 = 1:size(m,2)
         d_trace = @view d[:,i2]
         m_trace = @view m[:,i2]
@@ -294,7 +294,7 @@ function shiftadjoint!(H::TimeShift{<:Real}, m::StridedArray{T,2}, d::StridedArr
     nothing
 end
 
-function shiftadjoint!(H::TimeShift{<:Real}, m::StridedArray{T,3}, d::StridedArray{T,3}) where {T<:Real}
+function shiftadjoint!(H::TimeShift, m::StridedArray{T,3}, d::StridedArray{T,3}) where {T<:Real}
     Threads.@threads for i3 = 1:size(m,3)
         for i2 = 1:size(m,2)
             d_trace = @view d[:,i2,i3]
