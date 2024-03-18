@@ -37,6 +37,53 @@ end
         @test -(it-1)*dtmod ≈ t0[1][1]
     end
 
+    @testset "Time shift test, accuracy, T=$(T), shift=$(shift)" for T in (Float32, Float64), shift in (0, -0.5, 0.5, 9, -4, 7.3, -5.7)    
+        # build original Ricker wavelets
+        nt=256 # number of samples
+        Δt=0.001f0 # time sampling in sec
+        t = Int[0:1:nt-1;] .* Δt
+        fpeak=10
+        nshift=128 # shift to center the original wavelets
+        tshift=nshift*Δt
+        sig=sqrt(2)/(2*fpeak*π)
+        w=zeros(Float32,nt)
+        w[:]=(1 .- ((t.-tshift)./sig).^2).*exp.( -0.5.*((t.-tshift)./sig).^2)
+            
+        # build the shifting filter
+        dshift=shift*Δt # shift in absolute time
+        filter = WaveFD.shiftfilter(shift)
+            
+        # exact shifted wavelet solution
+        w_exact=zeros(Float32,nt)
+        w_exact[:]=(1 .- ((t.-tshift .- dshift)./sig).^2).*exp.( -0.5.*((t.-tshift.-dshift)./sig).^2)
+            
+        # numerically shifted wavelet
+        w_num=zeros(Float32,nt)
+        WaveFD.shiftforward!(filter, w_num, w)
+
+        # error
+        num = dot(w_num,w_num)
+        exa = dot(w_exact,w_exact)
+        diff = w_num .- w_exact
+        err = (exa ≈ 0 ? 0 : dot(diff,diff) / exa)        
+        write(stdout, "T=$(T), exact=$(exa), numerical=$(num), shift=$(shift) samples, err=$(err)\n")
+        @test err < 1e-8
+    end
+
+    @testset "Time shift test, dot product, T=$(T), $(length(n)+1)D, shift=$(shift)" for T in (Float32, Float64), n in ((),(4,),(4,5)), shift in (0, -0.5, 0.5, 9, -4, 7.3, -5.7)
+        m = rand(T,256,n...)
+        ms = rand(T,256,n...)
+        d = rand(T,256,n...)
+        ds = rand(T,256,n...)
+        WaveFD.shiftforward!(WaveFD.shiftfilter(shift), ds, m)
+        WaveFD.shiftadjoint!(WaveFD.shiftfilter(shift), ms, d)
+        rhs = dot(ds,d)
+        lhs = dot(m,ms)
+        err = norm(rhs-lhs)
+        write(stdout, "T=$(T), lhs=$(lhs), rhs=$(rhs), $(length(n)+1)D, shift=$(shift) samples, err=$(err)\n")
+        @test isapprox(err, 0.0, atol=eps(T)*length(m))
+    end
+
     @testset "Time interpolation tests, dot product, T=$(T), mode=$(mode), alg=$(alg), nthreads=$(nthreads), $(length(n)+1)D" for T in (Float32, Float64), mode in (0,1), alg in (WaveFD.LangJulia(),WaveFD.LangC()), n in ((),(4,),(4,5)), nthreads=(1,4)
         dtrec=T(.004)
         dtmod=T(.001)
