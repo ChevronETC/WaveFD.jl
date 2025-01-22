@@ -415,7 +415,7 @@ end
 Interpolate from `m::Array{T,N}` (fine) to `d::Array{T,N}` (coarse) using the sinc filter coefficients in `h::Array{Array{T,1},1}`.  `h` is built using
 `WaveFD.interpfilters`.  For example:
 
-    WaveFD.interpadjoint!(WaveFD.interpfilters(.001,.004), m, d)
+    WaveFD.interpforward!(WaveFD.interpfilters(.001,.004), m, d)
 
 Note that we support, `N=1`, `N=2` or `N=3`. If `N=2` or `N=3`, then interpolation is done along the fast dimension.  By default, `interpforward!` preserves
 amplitude (see `WaveFD.interpfilters!`).
