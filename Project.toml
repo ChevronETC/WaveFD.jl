@@ -1,6 +1,6 @@
 name = "WaveFD"
 uuid = "44f9e87b-acd6-44e6-b5b0-e1db9a6b2dd4"
-version = "0.7.0"
+version = "0.7.1"
 
 [deps]
 CvxCompress = "3e489a4b-a92a-5e1b-a7bf-ed666eae205e"
