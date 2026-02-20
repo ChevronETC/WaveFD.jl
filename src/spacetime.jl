@@ -175,8 +175,12 @@ function shiftforward!(H::TimeShift{<:AbstractFloat}, d::StridedArray{T,1}, m::S
     n_half_filter = n_filter_over_2 + n_filter_over_2_remainder
     bc_multiplier = (H.bc=="nearest") ? 1 : 0
 
+    if abs(nshift) >= n
+        d .= 0
+        return nothing
+    end
+
     n > n_half_filter || error("filter length must be shorter than twice the signal length")
-    nshift < n || error("the amount of shifting must be shorter than the total length of the signal") 
 
     # create a padded array
     mpad = Vector{T}(undef, n + 2*n_half_filter)
@@ -227,8 +231,12 @@ function shiftadjoint!(H::TimeShift{<:AbstractFloat}, m::StridedArray{T,1}, d::S
     n_half_filter = n_filter_over_2 + n_filter_over_2_remainder
     bc_multiplier = (H.bc=="nearest") ? 1 : 0
 
+    if abs(nshift) >= n
+        m .= 0
+        return nothing
+    end
+
     n > n_half_filter || error("filter length must be shorter than twice the signal length")
-    nshift < n || error("the amount of shifting must be shorter than the total length of the signal")
 
     # shift by integer number of samples and extrapolate
     fill!(m,0)
