@@ -246,6 +246,7 @@ end
     end
 
     @testset "injection partitioning with empty partitions, 2D" begin
+        Random.seed!(1234)
         dz,dx,z0,x0,nz,nx,nthreads = 10.0,10.0,0.0,0.0,100,101,48
 
         z = 0.25*dz*nz .+ 0.5*rand(3)*dz*nz
@@ -274,6 +275,7 @@ end
     end
 
     @testset "injection partitioning with empty partitions, 3D" begin
+        Random.seed!(1234)
         dz,dy,dx,z0,y0,x0,nz,ny,nx,nthreads = 10.0,10.0,10.0,0.0,0.0,0.0,100,101,102,48
 
         z = 0.25*dz*nz .+ 0.5*rand(3)*dz*nz
@@ -388,7 +390,7 @@ end
     end
 
     @testset "data injection/extrapolation, 2D off-grid, inner product, T=$(T), F=$(F), nthreads=$nthreads" for T in (Float32,Float64), F in (WaveFD.hickscoeffs, WaveFD.linearcoeffs), alg=(WaveFD.LangC(),WaveFD.LangJulia()), nthreads=(1,4)
-        Random.seed!(0)
+        Random.seed!(1234)
         nr = 10
         nz, nx = 100, 100
         dz, dx = 10.0, 10.0
